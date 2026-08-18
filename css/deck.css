@@ -435,31 +435,38 @@ mjx-container[jax="SVG"][display="true"] { margin: .3em 0 !important; }
 
 /* ---------- Lab 1 · the Incognito lattice ---------- */
 
+/* The lattice grows by a whole phase at a time, so the stage is capped and the
+   panel scrolls internally — the verdict underneath must never be pushed off. */
 .incognito-stage {
   display: grid; grid-template-columns: 1.55fr 1fr; gap: .7em; align-items: stretch;
+  /* A definite height, not just a cap: the grid row must be sized for the
+     trace's flex child to resolve against, and it keeps the layout from
+     jumping as phases appear or as k changes. */
+  height: 400px; min-height: 0;
 }
+.incognito-stage > .lattice-panel { overflow-y: auto; min-height: 0; }
 .lattice-panel {
   border: 1px solid var(--line); border-radius: 12px;
   background: rgba(17,29,46,.55); padding: .55em .7em;
 }
 .lattice-title {
-  font-size: .42em; letter-spacing: .1em; text-transform: uppercase;
-  color: var(--ink-faint); margin-bottom: .45em;
+  font-size: .38em; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--ink-faint); margin-bottom: .3em;
 }
 .lattice-title b { color: var(--accent); font-weight: 600; }
 
 /* One row per lattice level, so the bottom-up sweep reads upward. */
-.lattice-level { display: flex; justify-content: center; gap: .35em; margin-bottom: .28em; flex-wrap: wrap; }
+.lattice-level { display: flex; justify-content: center; gap: .3em; margin-bottom: .2em; flex-wrap: wrap; }
 
 /* Phases read left to right; inside a phase the ladders sit side by side and
    grow upward, so "generalise further" is literally up the page. */
-.lattice-phase { margin-bottom: .5em; }
+.lattice-phase { margin-bottom: .35em; }
 .lattice-groups { display: flex; gap: .7em; align-items: flex-end; flex-wrap: wrap; }
 .lattice-group { flex: 1 1 auto; min-width: 6.4em; display: flex; flex-direction: column; justify-content: flex-end; }
-.lattice-group .lattice-title { text-align: center; margin-bottom: .3em; }
+.lattice-group .lattice-title { text-align: center; margin: .15em 0 .3em; }
 
 .node {
-  font-family: var(--mono); font-size: .38em; padding: .3em .55em;
+  font-family: var(--mono); font-size: .34em; padding: .26em .5em;
   border-radius: 8px; border: 1px solid var(--line);
   background: var(--panel); color: var(--ink-dim); white-space: nowrap;
   transition: all .18s ease;
@@ -474,7 +481,7 @@ mjx-container[jax="SVG"][display="true"] { margin: .3em 0 !important; }
 .node.untested { opacity: .55; }
 .node.minimal { box-shadow: 0 0 0 2px var(--accent-3); font-weight: 700; }
 
-.lattice-legend { display: flex; gap: .8em; flex-wrap: wrap; font-size: .4em; color: var(--ink-faint); margin-top: .4em; }
+.lattice-legend { display: flex; gap: .8em; flex-wrap: wrap; font-size: .36em; color: var(--ink-faint); margin-top: .25em; }
 .lattice-legend span::before {
   content: ""; display: inline-block; width: .7em; height: .7em; border-radius: 3px;
   margin-right: .35em; vertical-align: -1px; border: 1px solid currentColor;
@@ -484,9 +491,12 @@ mjx-container[jax="SVG"][display="true"] { margin: .3em 0 !important; }
 .legend-implied::before { background: transparent; color: var(--accent-3); border-style: dashed; }
 .legend-pruned::before  { background: transparent; color: var(--ink-faint); }
 
+/* The trace fills whatever height the stage gives it, rather than clipping a
+   row halfway at a fixed max-height. */
+.trace-panel { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
 .step-trace {
   font-size: .42em; line-height: 1.5; color: var(--ink-dim);
-  max-height: 8.2em; overflow-y: auto; padding-right: .3em;
+  flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-right: .3em;
 }
 .step-trace div { padding: .18em 0; border-bottom: 1px solid rgba(41,65,92,.35); }
 .step-trace .trace-dim { color: var(--ink-faint); }

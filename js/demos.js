@@ -305,7 +305,7 @@
     const resultMetric = metric('Minimal solutions', '—', '', 'lowest satisfying nodes');
 
     const lattices = h('div', { class: 'lattice-panel' }, []);
-    const trace = h('div', { class: 'lattice-panel' }, [
+    const trace = h('div', { class: 'lattice-panel trace-panel' }, [
       h('div', { class: 'lattice-title' }, ['algorithm trace']),
       h('div', { class: 'step-trace' }, [])
     ]);
@@ -433,6 +433,16 @@
         h('div', { class: 'lattice-title' }, ['algorithm trace · newest first']),
         h('div', { class: 'step-trace' }, lines.length ? lines : [h('div', { class: 'trace-dim' }, ['nothing scanned yet'])])
       );
+
+      /* The panel scrolls, so follow the node the algorithm is working on
+         rather than leaving the class staring at an off-screen phase. */
+      const currentNode = lattices.querySelector('.node.current') || lattices.querySelector('.node.minimal');
+      if (currentNode) {
+        const panel = lattices.getBoundingClientRect();
+        const node = currentNode.getBoundingClientRect();
+        if (node.bottom > panel.bottom) lattices.scrollTop += node.bottom - panel.bottom + 10;
+        else if (node.top < panel.top) lattices.scrollTop -= panel.top - node.top + 10;
+      }
 
       stepBtn.disabled = cursor >= run.steps.length;
 
