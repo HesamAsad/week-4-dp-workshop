@@ -492,7 +492,7 @@
     const presets = h('div', { class: 'btn-group' }, [
       button('⟨P0,A2,I1⟩', () => set({ P: 0, A: 2, I: 1 })),
       button('⟨P2,A0,I1⟩', () => set({ P: 2, A: 0, I: 1 })),
-      button('⟨P0,A0,I0⟩ (raw)', () => set({ P: 0, A: 0, I: 0 }))
+      button('⟨P0,A0,I0⟩ (finest supplied)', () => set({ P: 0, A: 0, I: 0 }))
     ]);
 
     function set(next) {
@@ -585,8 +585,8 @@
 
   D.randomisedResponse = function (root) {
     let p = 0.5;
-    let n = 2000;
-    let truth = 0.30;
+    const n = 2000;
+    const truth = 0.30;
 
     /* Warner's mechanism as the lecture states it: truth with probability p,
        otherwise a uniform coin. Both conditionals, and their ratio: */
@@ -607,15 +607,6 @@
       label: 'p (answer truthfully)', min: 0.02, max: 0.98, step: 0.01, value: p,
       format: v => v.toFixed(2), onInput: v => { p = v; render(); }
     });
-    const nSlider = slider({
-      label: 'respondents n', min: 200, max: 20000, step: 200, value: n,
-      format: v => v.toLocaleString(), onInput: v => { n = v; render(); }
-    });
-    const truthSlider = slider({
-      label: 'true “Yes” rate', min: 0.05, max: 0.95, step: 0.01, value: truth,
-      format: v => `${(v * 100).toFixed(0)}%`, onInput: v => { truth = v; render(); }
-    });
-
     const solveBtn = button('Solve for ε = ln 7', () => {
       /* (1+p)/(1−p) = 7  ⟹  p = 3/4 */
       p = 0.75; pSlider.set(p); render();
@@ -624,7 +615,7 @@
 
     root.append(
       h('div', { class: 'lab-toolbar' }, [
-        h('div', { class: 'toolbar-left' }, [pSlider.node, truthSlider.node, nSlider.node]),
+        h('div', { class: 'toolbar-left' }, [pSlider.node, h('span', { class: 'lab-note' }, ['fixed: n = 2,000 · true Yes rate = 30%'])]),
         h('div', { class: 'btn-group' }, [solveBtn, lectureBtn])
       ]),
       h('div', { class: 'metric-row metric-row-four' }, [epsMetric, ratioMetric, estMetric, errMetric]),
@@ -678,7 +669,7 @@
   D.notDP = function (root) {
     const NAMES = ['Ana', 'Bo', 'Cai', 'Dev', 'Eve'];
     let removed = 3;                       // index of the record D′ drops
-    let mechanism = 'sample';
+    const mechanism = 'sample';
 
     const ratioMetric = metric('Worst-case ratio', '—', 'attack-tone', 'over all outputs O');
     const epsMetric = metric('Smallest ε that works', '—', 'privacy-tone', 'from the definition');
@@ -689,13 +680,8 @@
 
     const removeControl = segmented('D′ drops', NAMES.map((name, i) => ({ value: i, label: name })), removed,
       v => { removed = v; render(); });
-    const mechControl = segmented('mechanism', [
-      { value: 'sample', label: 'return a random record' },
-      { value: 'laplace', label: 'Laplace count instead' }
-    ], mechanism, v => { mechanism = v; render(); });
-
     root.append(
-      h('div', { class: 'lab-toolbar' }, [h('div', { class: 'toolbar-left' }, [mechControl.node, removeControl.node])]),
+      h('div', { class: 'lab-toolbar' }, [h('div', { class: 'toolbar-left' }, [removeControl.node, h('span', { class: 'lab-note' }, ['mechanism: return one uniformly random record'])])]),
       h('div', { class: 'metric-row' }, [ratioMetric, epsMetric, witnessMetric]),
       compare,
       verdict
@@ -790,7 +776,7 @@
     });
 
     const presets = h('div', { class: 'btn-group' }, [
-      ['ε = 0.1', 0.1], ['ε = 1', 1], ['Census: 17.14', 17.14], ['ε = 50', 50]
+      ['ε = 0.1', 0.1], ['ε = 1', 1], ['ε = 10', 10], ['ε = 50', 50]
     ].map(([label, value]) => button(label, () => {
       eps = value; epsSlider.set(Math.log(value)); render();
     })));
@@ -843,7 +829,7 @@
       } else if (eps <= 1.2) {
         setVerdict(verdict, 'ok', `ε ≈ 1 is the standard "good guarantee". Belief about you can move from ${(prior * 100).toFixed(0)}% to at most ${(hi * 100).toFixed(1)}% or as low as ${(lo * 100).toFixed(1)}% — a real shift, but a bounded one.`);
       } else if (eps < 20) {
-        setVerdict(verdict, 'warn', `e^ε = ${eEps.toFixed(0)} already lets belief run from ${(lo * 100).toFixed(1)}% to ${(hi * 100).toFixed(1)}%. The US Census Bureau's ε = 17.14 for person statistics is here — a reminder that deployed ε values are chosen against utility, not against this picture.`);
+        setVerdict(verdict, 'warn', `e^ε = ${eEps.toFixed(0)} lets belief run from ${(lo * 100).toFixed(1)}% to ${(hi * 100).toFixed(1)}%. The inequality still holds, but the allowed update is already very broad.`);
       } else {
         setVerdict(verdict, 'bad', `This is the worksheet's point. At ε = ${fmtEps(eps)}, e^ε ≈ ${eEps.toExponential(2)}: one dataset may produce a given output ${eEps.toExponential(1)} times more readily than its neighbour, and the posterior band covers essentially the whole axis. The inequality is still formally satisfied — it just no longer rules anything out. A guarantee that forbids nothing is not a guarantee.`);
       }
@@ -862,7 +848,8 @@
      ------------------------------------------------------------------- */
 
   D.sensitivity = function (root) {
-    let n = 25, lo = 0, hi = 100, eps = 1, query = 'sum', wideFirst = false;
+    let n = 25, query = 'sum', wideFirst = false;
+    const lo = 0, hi = 100, eps = 1;
     const rnd = mulberry32(20250818);
     /* Fixed uniform draws, so switching query or range re-uses the same people
        and the comparison on screen is like for like. */
@@ -887,21 +874,14 @@
     ], wideFirst, v => { wideFirst = v; rebuild(); });
 
     const nSlider = slider({ label: 'n', min: 5, max: 200, step: 1, value: n, onInput: v => { n = v; rebuild(); } });
-    const hiSlider = slider({ label: 'h', min: 10, max: 500, step: 10, value: hi, onInput: v => { hi = v; rebuild(); } });
-    const epsSlider = slider({
-      label: 'ε', min: Math.log(0.05), max: Math.log(10), step: 0.01, value: Math.log(eps),
-      format: v => fmtEps(Math.exp(v)), onInput: v => { eps = Math.exp(v); render(); }
-    });
-
     root.append(
       h('div', { class: 'lab-toolbar' }, [
-        h('div', { class: 'toolbar-left' }, [queryControl.node, wideControl.node, nSlider.node, hiSlider.node, epsSlider.node]),
-        h('div', { class: 'btn-group' }, [button('New sample', () => { resample(); }, 'active')])
+        h('div', { class: 'toolbar-left' }, [queryControl.node, wideControl.node, nSlider.node]),
+        h('span', { class: 'lab-note' }, ['fixed: l = 0 · h = 100 · ε = 1'])
       ]),
       h('div', { class: 'metric-row metric-row-four' }, [sensMetric, scaleMetric, answerMetric, errorMetric]),
       formula,
       chart,
-      assumption,
       verdict
     );
 
@@ -912,11 +892,6 @@
       });
       render();
     }
-    function resample() {
-      units = Array.from({ length: 200 }, () => rnd());
-      rebuild();
-    }
-
     function trueValue() {
       const total = data.reduce((s, v) => s + v, 0);
       return query === 'sum' ? total : total / data.length;
@@ -1013,8 +988,8 @@
 
     const biasMetric = metric('Clipping bias', '—', 'model-tone', 'from the values you cut');
     const noiseMetric = metric('Noise (std dev)', '—', 'privacy-tone', '√2 · C / (n ε)');
-    const totalMetric = metric('Expected error', '—', 'attack-tone', 'bias and noise together');
-    const bestMetric = metric('Best bound here', '—', '', 'minimises the total');
+    const totalMetric = metric('Simulated RMSE', '—', 'attack-tone', 'root-mean-square error');
+    const bestMetric = metric('Best C in this sample', '—', '', 'lowest simulated RMSE');
 
     const chart = svgEl('svg', { viewBox: '0 0 900 260', role: 'img', 'aria-label': 'Error against the clipping bound' });
     const verdict = verdictBox('');
@@ -1067,7 +1042,7 @@
       setMetric(noiseMetric, money(nz), `C/n = ${money(clip / n)} sensitivity`);
       setMetric(totalMetric, money(tot), `${(tot / trueMean * 100).toFixed(1)}% of the true mean`);
       const best = bestClip();
-      setMetric(bestMetric, money(best), `error ${money(total(best))}`);
+      setMetric(bestMetric, money(best), `RMSE ${money(total(best))}`);
 
       const W = 900, H = 260, pad = 52;
       const lx0 = Math.log(20000), lx1 = Math.log(8000000);
@@ -1173,8 +1148,8 @@
     function render() {
       setMetric(perMetric, perEps(queries).toFixed(3), `${queries} × ${perEps(queries).toFixed(3)} = ${totalEps.toFixed(1)}`);
       setMetric(spentMetric, totalEps.toFixed(2), 'ε₁ + ε₂ + … + ε_k');
-      setMetric(errMetric, `± ${perError(queries).toFixed(1)}`, `on a count, Δf = 1`);
-      setMetric(avgMetric, `± ${avgError(queries).toFixed(1)}`, strategy === 'repeat' ? 'this is what you actually get' : 'only if the query repeats');
+      setMetric(errMetric, `σ = ${perError(queries).toFixed(1)}`, `standard deviation; count Δf = 1`);
+      setMetric(avgMetric, `σ = ${avgError(queries).toFixed(1)}`, strategy === 'repeat' ? 'standard deviation of the average' : 'only defined if the query repeats');
       avgMetric.classList.toggle('is-leak', strategy === 'repeat' && avgError(queries) > avgError(1));
 
       bar.replaceChildren(...[
@@ -1206,7 +1181,7 @@
           ? svgEl('line', { x1: pad, y1: sy(avgError(1)), x2: W - pad, y2: sy(avgError(1)), stroke: 'var(--ink-faint)', 'stroke-width': 1.2, 'stroke-dasharray': '3 4' })
           : null,
         strategy === 'repeat'
-          ? svgText({ class: 'axis-label', x: pad + 6, y: sy(avgError(1)) - 7 }, `asking once: ±${avgError(1).toFixed(1)}`)
+          ? svgText({ class: 'axis-label', x: pad + 6, y: sy(avgError(1)) - 7 }, `asking once: σ=${avgError(1).toFixed(1)}`)
           : null,
         svgEl('circle', { cx: sx(queries), cy: sy(strategy === 'repeat' ? avgError(queries) : perError(queries)), r: 5, fill: strategy === 'repeat' ? 'var(--accent-3)' : 'var(--accent-2)' }),
         svgText({ class: 'axis-label', x: pad + 6, y: 18, fill: 'var(--accent-2)' }, 'error of one answer  ∝ k'),
@@ -1218,10 +1193,10 @@
 
       if (strategy === 'repeat') {
         setVerdict(verdict, 'bad',
-          `This is the week 3 attack, and it now fails. Asking the same question ${queries}× under a fixed budget means each answer carries ε/${queries}, so its noise grows like k while averaging only removes √k of it — the net error rises from ±${avgError(1).toFixed(1)} at one query to ±${avgError(queries).toFixed(1)} at ${queries}. Repetition no longer buys accuracy, which is precisely what the noisy-counts mechanism of week 3 lacked.`);
+          `Under this fixed-budget split, asking the same query ${queries}× gives each answer ε/${queries}. Its noise scale grows like k, while averaging removes only √k, so the standard deviation rises from ${avgError(1).toFixed(1)} for one answer to ${avgError(queries).toFixed(1)} here. Repetition no longer buys accuracy under this allocation.`);
       } else {
         setVerdict(verdict, queries <= 5 ? 'ok' : 'warn',
-          `Sequential composition: k mechanisms at ε₁ … ε_k release a total of Σεᵢ = ${totalEps.toFixed(1)}. Spread over ${queries} queries each answer carries ±${perError(queries).toFixed(1)} of noise on a count. The budget is a real budget — once it is spent, the curator must stop answering, because there is no further ε to charge.`);
+          `Sequential composition charges Σεᵢ = ${totalEps.toFixed(1)}. Spread equally over ${queries} count queries, each answer has noise standard deviation ${perError(queries).toFixed(1)}. Additional releases need additional budget or a redesigned allocation.`);
       }
     }
 
@@ -1311,7 +1286,7 @@
           `The bound holds at ${raw.toFixed(3)}, but it is weaker than the attack week 3 actually achieved (${UNDEFENDED.toFixed(2)}). So DP is doing something, and the guarantee alone does not yet rule out the attack we already built.`);
       } else {
         setVerdict(verdict, 'bad',
-          `Careful here. The worksheet's answer — yes, DP bounds membership attacks — is correct in form: treat the model as the output of a DP mechanism, and Yeom et al. bound the advantage by e^ε − 1. But at ε = ${fmtEps(eps)} that bound is ${raw.toFixed(2)}, and an advantage of 1 is the maximum anyone could have. Above ε = ln 2 the theorem forbids nothing. In practice DP-SGD does defeat these attacks at far larger ε — but that is an empirical claim, not this theorem.`);
+          `The worksheet's form is correct: treat the model as the output of a DP mechanism, then apply post-processing. But at ε = ${fmtEps(eps)} this particular advantage bound is ${raw.toFixed(2)}, while advantage cannot exceed 1. The theorem is non-binding here; observed attack performance requires a separate empirical evaluation.`);
       }
     }
 
