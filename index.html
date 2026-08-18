@@ -244,7 +244,7 @@
   <div class="grid3 small">
     <div class="card">
       <h4>1 · RETURN f(D) EXACTLY</h4>
-      <p class="dim">Two neighbouring datasets give two different answers. Take \(O\) to be one of them: probability 1 under one dataset, 0 under the other.</p>
+      <p class="dim">Unless \(f\) ignores the data entirely, some neighbouring pair gives two different answers. Take \(O\) to be one of them: probability 1 under one dataset, 0 under the other.</p>
       <span class="status bad">not DP for any \(\varepsilon\)</span>
     </div>
     <div class="card">
@@ -544,7 +544,7 @@
     <tr><th>Q</th><th>What is asked</th><th>The move</th><th>The lesson</th></tr>
     <tr><td>1</td><td>make the table 3-anonymous</td><td>Incognito: bottom-up, prune by subset and rollup</td><td>income fails alone, so half the lattice never exists</td></tr>
     <tr><td>2</td><td>\(p\) for \(\varepsilon = \ln 7\)</td><td>\(\tfrac{1+p}{1-p} = 7 \Rightarrow p = \tfrac34\)</td><td>more truth is a weaker guarantee, not a stronger one</td></tr>
-    <tr><td>3</td><td>Laplace for a sum, then a mean</td><td>\(\Delta f = h\), then \(h/n\)</td><td>means tolerate DP; sums do not improve with \(n\)</td></tr>
+    <tr><td>3</td><td>Laplace for a sum, then a mean</td><td>\(\Delta f = h\), then \(h/n\)</td><td>a mean's error shrinks like \(1/n\); a sum's never moves</td></tr>
     <tr><td>4</td><td>one value in \([l, 2h]\)</td><td>\(\Delta f = 2h\)</td><td>a worst case over pairs, so everyone pays for one record</td></tr>
     <tr><td>5</td><td>why \(\varepsilon = 50\) is weak</td><td>\(e^{50} \approx 5\times10^{21}\)</td><td>the inequality holds and forbids nothing</td></tr>
     <tr><td>6</td><td>random record is not DP</td><td>exhibit \(O = \{d\}\): \(\tfrac{1}{|D|} \le e^\varepsilon \cdot 0\)</td><td>differing support kills every finite \(\varepsilon\)</td></tr>

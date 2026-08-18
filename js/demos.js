@@ -854,6 +854,9 @@
   D.sensitivity = function (root) {
     let n = 25, lo = 0, hi = 100, eps = 1, query = 'sum', wideFirst = false;
     const rnd = mulberry32(20250818);
+    /* Fixed uniform draws, so switching query or range re-uses the same people
+       and the comparison on screen is like for like. */
+    let units = Array.from({ length: 200 }, () => rnd());
     let data = null;
 
     const sensMetric = metric('Sensitivity Δf', '—', 'attack-tone', 'worst case over neighbours');
@@ -868,13 +871,13 @@
 
     const queryControl = segmented('query', [
       { value: 'sum', label: 'sum' }, { value: 'avg', label: 'average' }
-    ], query, v => { query = v; resample(); });
+    ], query, v => { query = v; rebuild(); });
     const wideControl = segmented('v₁ range', [
       { value: false, label: 'v₁ ∈ [l, h]  (Q3)' }, { value: true, label: 'v₁ ∈ [l, 2h]  (Q4)' }
-    ], wideFirst, v => { wideFirst = v; resample(); });
+    ], wideFirst, v => { wideFirst = v; rebuild(); });
 
-    const nSlider = slider({ label: 'n', min: 5, max: 200, step: 1, value: n, onInput: v => { n = v; resample(); } });
-    const hiSlider = slider({ label: 'h', min: 10, max: 500, step: 10, value: hi, onInput: v => { hi = v; resample(); } });
+    const nSlider = slider({ label: 'n', min: 5, max: 200, step: 1, value: n, onInput: v => { n = v; rebuild(); } });
+    const hiSlider = slider({ label: 'h', min: 10, max: 500, step: 10, value: hi, onInput: v => { hi = v; rebuild(); } });
     const epsSlider = slider({
       label: 'ε', min: Math.log(0.05), max: Math.log(10), step: 0.01, value: Math.log(eps),
       format: v => fmtEps(Math.exp(v)), onInput: v => { eps = Math.exp(v); render(); }
@@ -892,12 +895,16 @@
       verdict
     );
 
-    function resample() {
+    function rebuild() {
       data = Array.from({ length: n }, (_, i) => {
         const top = (i === 0 && wideFirst) ? 2 * hi : hi;
-        return lo + rnd() * (top - lo);
+        return lo + units[i] * (top - lo);
       });
       render();
+    }
+    function resample() {
+      units = Array.from({ length: 200 }, () => rnd());
+      rebuild();
     }
 
     function trueValue() {
@@ -913,7 +920,7 @@
     }
 
     function render() {
-      if (!data || data.length !== n) { resample(); return; }
+      if (!data || data.length !== n) { rebuild(); return; }
       const df = sensitivity(), b = df / eps, truth = trueValue();
       const draw = truth + laplace(mulberry32(Math.round(eps * 1e6) + n), b);
 
@@ -969,10 +976,10 @@
         rel < 0.02 ? 'ok' : rel < 0.15 ? 'warn' : 'bad',
         query === 'sum'
           ? `A sum over n = ${n} values pays Δf = ${df.toFixed(0)} regardless of n: the answer is ${truth.toFixed(0)} ± ${(Math.SQRT2 * b).toFixed(0)}. Adding people does not shrink that ± at all — it only grows the sum it sits beside, so the error falls in relative terms while staying identical in absolute ones.`
-          : `An average divides the sensitivity by n, so Δf = ${df.toFixed(2)} and the noise is ${(Math.SQRT2 * b).toFixed(2)} against an answer of ${truth.toFixed(1)} — ${(rel * 100).toFixed(1)}%. This is why averages tolerate differential privacy far better than sums: more people means less relative noise.`);
+          : `An average divides the sensitivity by n, so Δf = ${df.toFixed(2)} and the ± is ${(Math.SQRT2 * b).toFixed(2)} against an answer of ${truth.toFixed(1)}. Compare the percentage with the sum's: it is identical, because an average is just the sum over n and the noise is divided by n too. What actually changes is the absolute error — it shrinks like 1/n against an answer that stays on the same scale, so a DP mean converges to the truth while a DP sum's error never moves.`);
     }
 
-    resample();
+    rebuild();
     return {};
   };
 
