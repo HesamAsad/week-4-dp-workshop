@@ -54,25 +54,52 @@
 
 <!-- ============================================================ -->
 <section>
-  <div class="eyebrow">RETRIEVAL PRACTICE · WEEK 3</div>
-  <h2>Three ideas we need before Question 1</h2>
-  <div class="recall-path">
-    <div class="recall-step">
-      <span class="recall-number">1</span>
-      <div><b>Quasi-identifiers link rows</b><span>Postcode + age can identify someone even after names are removed.</span></div>
+  <div class="eyebrow">WEEK 3 RECAP · THE CORE IDEA</div>
+  <h2>k-anonymity hides each row in a crowd of at least \(k\)</h2>
+  <div class="crowd-path">
+    <div class="crowd-step">
+      <span class="crowd-number">1</span>
+      <b>Remove direct identifiers</b>
+      <strong class="struck-data">Name · Student ID</strong>
+      <small>Necessary—but not enough.</small>
     </div>
-    <div class="recall-step">
-      <span class="recall-number">2</span>
-      <div><b>k-anonymity counts equivalence classes</b><span>Every released quasi-identifier pattern must occur at least \(k\) times.</span></div>
+    <div class="crowd-arrow">→</div>
+    <div class="crowd-step">
+      <span class="crowd-number">2</span>
+      <b>Declare the quasi-identifiers \(Q\)</b>
+      <strong>Postcode · age · income</strong>
+      <small>Values an attacker may already know.</small>
     </div>
-    <div class="recall-step">
-      <span class="recall-number">3</span>
-      <div><b>Class size is not attribute privacy</b><span>Five indistinguishable people may still share one sensitive value.</span></div>
+    <div class="crowd-arrow">→</div>
+    <div class="crowd-step crowd-result">
+      <span class="crowd-number">3</span>
+      <b>Make every \(Q\)-pattern repeat</b>
+      <div class="matching-rows"><span>same \(Q\)</span><span>same \(Q\)</span><span>same \(Q\)</span></div>
+      <small>At least \(k\) rows form one equivalence class.</small>
     </div>
   </div>
-  <div class="takeaway"><b>Quick check:</b> which of the three statements is about identity, and which is about a secret? Keep those two promises separate.</div>
+  <div class="takeaway"><b>What the attacker sees:</b> the released quasi-identifiers alone leave at least \(k\) candidate rows. If those candidates are equally likely, a row guess succeeds with probability at most \(1/k\).</div>
   <aside class="notes">
-    This is intentionally retrieval rather than re-teaching. Ask students to define quasi-identifier and equivalence class to a neighbour. The three statements come directly from Week 3's anonymised-table section and Lecture 4. If the room cannot answer, slow down on the next two slides; otherwise move quickly.
+    Re-teach the definition before Question 1. Removing names is only step one: the guarantee is always relative to a declared quasi-identifier set Q. Rows with the same Q-values form an equivalence class. k-anonymity requires every such class to contain at least k released rows. Be precise about the familiar 1/k intuition: it assumes the attacker assigns equal prior probability to all candidate rows; the formal guarantee itself is a minimum group size.
+  </aside>
+</section>
+
+<section>
+  <div class="eyebrow">WEEK 3 RECAP · THE FORMAL TEST</div>
+  <h2>The smallest equivalence class decides the result</h2>
+  <div class="kanon-formula eq">\[
+    \min_{r \in D}\left|\left\{r' \in D : r'[Q] = r[Q]\right\}\right| \ge k
+  \]</div>
+  <div class="formula-walk">
+    <div><span>1</span><b>Pick a row \(r\)</b><small>from the released dataset \(D\)</small></div>
+    <i>→</i>
+    <div><span>2</span><b>Collect its matches \(r'\)</b><small>identical values across every column in \(Q\)</small></div>
+    <i>→</i>
+    <div><span>3</span><b>Count the group</b><small>the smallest such count must be at least \(k\)</small></div>
+  </div>
+  <div class="takeaway"><b>In plain language:</b> no released quasi-identifier pattern may occur fewer than \(k\) times.</div>
+  <aside class="notes">
+    Read the expression from the inside out. D is the released dataset, r is one row, and Q is the declared set of quasi-identifier columns. The set in braces is the equivalence class of r: every row r-prime whose Q-values match r. The vertical bars count that class. Taking the minimum asks for the smallest class in the table; it must contain at least k rows.
   </aside>
 </section>
 
@@ -110,7 +137,7 @@
     <div class="equivalence-brace"><b>equivalence class size \(=4\)</b><span>identity is ambiguous</span></div>
   </div>
   <div class="reveal-question">If Alice matches this class, what have we learned about her loan?</div>
-  <div class="takeaway fragment"><b>The homogeneity attack:</b> k-anonymity hides which row is Alice, but the class reveals the sensitive value anyway.</div>
+  <div class="takeaway fragment"><b>The homogeneity attack:</b> Alice's row stays ambiguous, but her sensitive value is certain. This limitation motivates stronger table-release models such as \(l\)-diversity and \(t\)-closeness.</div>
   <aside class="notes">
     This reuses Week 3's core visual logic without repeating the full homogeneity calculation. Pause before revealing the takeaway. The answer should be immediate: if Alice is one of these four people, her loan value is Y even though her exact row remains unknown.
   </aside>
@@ -179,6 +206,30 @@
   <div class="two-line-goal"><span>3-anonymous w.r.t. postcode + age?</span><b>Yes: every postcode–age pattern appears in at least 3 rows.</b><span>Attribute-private?</span><b>Not necessarily: the second class reveals “Yes” in the Loan column.</b></div>
   <aside class="notes">
     Name the roles before asking the question: postcode and age are the quasi-identifiers on this slide; Loan is the sensitive attribute. Pause on the second class. It protects row identity with respect to that QI set but not the loan value. This is Week 3's homogeneity limitation, and it prevents students from treating k-anonymity as a general privacy guarantee.
+  </aside>
+</section>
+
+<section data-part="1">
+  <div class="eyebrow">QUESTION 1 PREREQUISITE · HOW CLASSES GROW</div>
+  <h3>Generalise common values; suppress the stubborn exceptions</h3>
+  <div class="kanon-methods">
+    <div class="kanon-method">
+      <span>GENERALISATION</span>
+      <div class="method-example"><b>ZIP 53715</b><i>→</i><b>537**</b></div>
+      <div class="method-example"><b>Age 24</b><i>→</i><b>20–29</b></div>
+      <small>Keep the rows, but replace precise values with broader categories so more \(Q\)-patterns match.</small>
+    </div>
+    <div class="kanon-method">
+      <span>SUPPRESSION</span>
+      <div class="method-example"><b>Income 73K</b><i>→</i><b>*</b></div>
+      <div class="method-example"><b>rare outlier row</b><i>→</i><b>omit</b></div>
+      <small>Hide a difficult value—or remove a rare row. After deleting rows, recompute the class sizes.</small>
+    </div>
+  </div>
+  <div class="monotonicity-strip"><span>more specific</span><b>generalise or mask values → classes merge</b><span>coarser</span></div>
+  <div class="takeaway"><b>Monotonicity:</b> coarsening quasi-identifiers can merge classes, never split them, so the minimum class size cannot decrease. Row deletion is different: it can shrink a class, so recheck \(k\).</div>
+  <aside class="notes">
+    Generalisation and suppression both trade detail for privacy. The examples are illustrative; Question 1 uses its supplied hierarchies and ultimately suppresses income by mapping it to a wildcard. Emphasise the scope of monotonicity: mapping quasi-identifier values upward to broader categories cannot create a smaller class. Deleting an entire row is not a roll-up and may shrink a class, so the table must be checked again. Incognito exploits the monotonic roll-up rule when it searches from specific to general.
   </aside>
 </section>
 
