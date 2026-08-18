@@ -260,13 +260,35 @@
 
 <section data-part="2">
   <div class="eyebrow">Prerequisite · a mechanism is a distribution</div>
-  <h3>Ask which outputs are likely—not only which answer appears</h3>
-  <div class="distribution-pair">
-    <div><b>Run \(M(D)\) many times</b><span class="curve curve-a"></span><small>a distribution over possible outputs</small></div>
-    <div><b>Run \(M(D')\) many times</b><span class="curve curve-b"></span><small>a nearby distribution over the same outputs</small></div>
+  <h3>Use one output axis; compare probability in the same region</h3>
+  <div class="distribution-comparison">
+    <div class="distribution-legend" aria-hidden="true">
+      <span class="legend-d"><i></i>run \(M(D)\) many times</span>
+      <span class="legend-dp"><i></i>run \(M(D')\) many times</span>
+      <small>schematic shapes</small>
+    </div>
+    <svg viewBox="0 0 1000 270" role="img" aria-label="Two overlapping output distributions for neighbouring datasets on one shared axis. A vertical band marks an output set O, and the area under each curve inside that band is its probability of O.">
+      <defs>
+        <clipPath id="output-event-o"><rect x="560" y="30" width="150" height="180"></rect></clipPath>
+      </defs>
+      <rect class="event-band" x="560" y="30" width="150" height="180" rx="7"></rect>
+      <path class="event-mass mass-d" clip-path="url(#output-event-o)" d="M70 210 C155 210 190 62 380 62 C570 62 610 210 950 210 L950 210 L70 210 Z"></path>
+      <path class="event-mass mass-dp" clip-path="url(#output-event-o)" d="M70 210 C210 210 275 78 495 78 C690 78 750 210 950 210 L950 210 L70 210 Z"></path>
+      <line class="distribution-axis" x1="70" y1="210" x2="950" y2="210"></line>
+      <line class="distribution-axis" x1="70" y1="30" x2="70" y2="210"></line>
+      <path class="distribution-curve curve-d" d="M70 210 C155 210 190 62 380 62 C570 62 610 210 950 210"></path>
+      <path class="distribution-curve curve-dp" d="M70 210 C210 210 275 78 495 78 C690 78 750 210 950 210"></path>
+      <text class="distribution-event-label" x="635" y="53" text-anchor="middle">output set O</text>
+      <text class="distribution-axis-label" x="80" y="24">relative likelihood</text>
+      <text class="distribution-axis-label" x="510" y="252" text-anchor="middle">possible released value y</text>
+    </svg>
+    <div class="distribution-masses">
+      <span class="mass-d-label">blue area = \(\Pr[M(D)\in O]\)</span>
+      <span class="mass-dp-label">purple area = \(\Pr[M(D')\in O]\)</span>
+    </div>
   </div>
-  <div class="reveal-question"><span>DP compares these two curves at</span><b>every possible output set \(O\)</b></div>
-  <aside class="notes">Students often read M(D) as one noisy number. The definition instead compares the entire distributions induced by the mechanism's random coins. The data is fixed during each experiment.</aside>
+  <div class="reveal-question"><span>DP requires the two shaded probabilities to stay within an \(e^\varepsilon\) factor</span><b>for every region \(O\)</b></div>
+  <aside class="notes">Students often read M(D) as one noisy number. Here each curve represents the distribution produced by fixing a dataset and rerunning the mechanism with fresh random coins. Height indicates relative likelihood; probability is area, so the definition compares the two shaded areas for every possible output region O. The drawn shapes are schematic, not an assumption that every mechanism is Gaussian. Stress the shared support: if one distribution assigns positive probability to a region that is impossible under the other, no finite multiplicative bound can hold.</aside>
 </section>
 
 <section data-part="2">

@@ -338,7 +338,6 @@ svg text { font-family: var(--font); fill: var(--ink-dim); }
 
 .participation-story,
 .neighbor-pair,
-.distribution-pair,
 .trust-pipelines,
 .postprocess-flow,
 .membership-game,
@@ -349,7 +348,6 @@ svg text { font-family: var(--font); fill: var(--ink-dim); }
 .participation-story { grid-template-columns: 1fr auto 1fr; }
 .story-world,
 .dataset-world,
-.distribution-pair > div,
 .trust-pipelines > div,
 .membership-game > div:not(.game-model),
 .sensitivity-story > div:not(.story-arrow),
@@ -358,24 +356,48 @@ svg text { font-family: var(--font); fill: var(--ink-dim); }
   display: flex; flex-direction: column; gap: .32em; padding: .85em 1em;
   border: 1px solid var(--line); border-radius: 12px; background: var(--bg-soft);
 }
-.story-world span, .dataset-world span, .distribution-pair small, .trust-pipelines small,
+.story-world span, .dataset-world span, .trust-pipelines small,
 .membership-game span, .sensitivity-story span, .budget-ledger span, .postprocess-flow span {
   color: var(--ink-dim); font-size: .55em; line-height: 1.4;
 }
-.story-world b, .dataset-world b, .distribution-pair b, .trust-pipelines b,
+.story-world b, .dataset-world b, .trust-pipelines b,
 .membership-game b, .sensitivity-story b, .budget-ledger b, .postprocess-flow b { font-size: .68em; }
 .story-equals { color: var(--accent-3); font: 700 1.1em var(--mono); }
 .neighbor-pair { grid-template-columns: 1fr auto 1fr; }
 .neighbor-change { display: flex; flex-direction: column; text-align: center; gap: .2em; color: var(--accent-2); }
 .neighbor-change span { font: 700 .68em var(--mono); }
 .neighbor-change b, .dataset-world small { color: var(--ink-faint); font-size: .45em; }
-.distribution-pair, .trust-pipelines { grid-template-columns: 1fr 1fr; }
-.curve { display: block; height: 2.5em; border-bottom: 2px solid var(--line); position: relative; overflow: hidden; }
-.curve::after {
-  content: ""; position: absolute; width: 72%; height: 160%; left: 14%; bottom: -95%;
-  border: 4px solid var(--accent); border-radius: 50% 50% 0 0;
+.trust-pipelines { grid-template-columns: 1fr 1fr; }
+.distribution-comparison {
+  padding: .45em .65em .5em; border: 1px solid var(--line); border-radius: 12px;
+  background: var(--bg-soft);
 }
-.curve-b::after { left: 20%; border-color: var(--accent-4); }
+.distribution-legend {
+  display: flex; align-items: center; gap: 1.2em; padding: 0 .35em .1em;
+  color: var(--ink-dim); font-size: .52em;
+}
+.distribution-legend span { display: inline-flex; align-items: center; gap: .45em; }
+.distribution-legend i { display: inline-block; width: 2.2em; border-top: 3px solid var(--accent); }
+.distribution-legend .legend-dp i { border-color: var(--accent-4); border-top-style: dashed; }
+.distribution-legend small { margin-left: auto; color: var(--ink-faint); font-size: .92em; }
+.distribution-comparison > svg { display: block; width: 100%; height: 6.5em; }
+.distribution-axis { stroke: var(--line); stroke-width: 2; }
+.distribution-curve { fill: none; stroke-width: 4; }
+.curve-d { stroke: var(--accent); }
+.curve-dp { stroke: var(--accent-4); stroke-dasharray: 10 7; }
+.event-band { fill: rgba(255,255,255,.045); stroke: rgba(255,214,122,.48); stroke-width: 2; stroke-dasharray: 5 5; }
+.event-mass { stroke: none; }
+.mass-d { fill: rgba(72,184,255,.32); }
+.mass-dp { fill: rgba(187,140,255,.32); }
+.distribution-axis-label { fill: var(--ink-faint); font: 17px var(--mono); }
+.distribution-event-label { fill: var(--warn); font: 600 18px var(--font); }
+.distribution-masses { display: grid; grid-template-columns: 1fr 1fr; gap: .65em; margin-top: .1em; }
+.distribution-masses span {
+  padding: .24em .55em; border-radius: 8px; text-align: center;
+  font-size: .52em; font-family: var(--mono);
+}
+.mass-d-label { color: var(--accent); background: rgba(72,184,255,.08); }
+.mass-dp-label { color: var(--accent-4); background: rgba(187,140,255,.08); }
 .reveal-question {
   display: flex; justify-content: center; align-items: center; gap: .6em; margin-top: .7em;
   padding: .55em .8em; border-radius: 10px; background: rgba(72,184,255,.08); font-size: .62em;
