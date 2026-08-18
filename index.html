@@ -105,7 +105,7 @@
     <div class="equivalence-row"><span>30*</span><span>21–30</span><b>Y</b></div>
     <div class="equivalence-row"><span>30*</span><span>21–30</span><b>Y</b></div>
     <div class="equivalence-row"><span>30*</span><span>21–30</span><b>Y</b></div>
-    <div class="equivalence-brace"><b>equivalence class size = 4</b><span>identity is ambiguous</span></div>
+    <div class="equivalence-brace"><b>equivalence class size \(=4\)</b><span>identity is ambiguous</span></div>
   </div>
   <div class="reveal-question">If Alice matches this class, what have we learned about her loan?</div>
   <div class="takeaway fragment"><b>The homogeneity attack:</b> k-anonymity hides which row is Alice, but the class reveals the sensitive value anyway.</div>
@@ -142,7 +142,7 @@
   <h3>Removing names does not remove the join key</h3>
   <div class="column-roles">
     <div class="role-column direct"><b>Name</b><span>direct identifier</span><small>remove before release</small></div>
-    <div class="role-plus">+</div>
+    <div class="role-plus">\(+\)</div>
     <div class="role-column qi"><b>Postcode · age · income</b><span>quasi-identifiers</span><small>an attacker may already know these</small></div>
     <div class="role-arrow">→</div>
     <div class="role-column sensitive"><b>Loan taken?</b><span>sensitive attribute</span><small>what the join can reveal</small></div>
@@ -174,7 +174,7 @@
       <div><b>class size 3</b><span>same quasi-identifiers</span></div>
     </div>
   </div>
-  <div class="two-line-goal"><span>3-anonymous?</span><b>Yes: every equivalence class has at least 3 rows.</b><span>Attribute-private?</span><b>Not necessarily: the second class reveals “Loan = Yes”.</b></div>
+  <div class="two-line-goal"><span>3-anonymous?</span><b>Yes: every equivalence class has at least 3 rows.</b><span>Attribute-private?</span><b>Not necessarily: the second class reveals “Yes” in the Loan column.</b></div>
   <aside class="notes">
     Pause on the second class. It protects row identity but not the loan value. This is Week 3's homogeneity limitation, and it prevents students from treating k-anonymity as a general privacy guarantee. Question 1 only asks for the group-size condition.
   </aside>
@@ -208,7 +208,7 @@
 
 <section class="lab" data-part="1">
   <h3>Lab 1 · Run Incognito on the worksheet's table</h3>
-  <p class="lab-brief">Step through the real algorithm. Every <span class="mono">k=</span> number is counted from the 12 rows; nothing is pre-computed.</p>
+  <p class="lab-brief">Step through the real algorithm. Every displayed class size is counted from the 12 rows; nothing is pre-computed.</p>
   <div class="demo" data-demo="incognito"></div>
   <aside class="notes">
     Step through the 1-attribute phase by hand first — three scans settle postcode and age, and two settle income, with <span class="mono">I0</span> failing at a class of 2. Ask what that failure has just bought: every node containing income at level 0 is now dead, which is 9 of the 18 full-domain nodes. By the end the counter reads 13, not 9 — the extra four are the combinations whose postcode-and-age pair failed at two dimensions, pruned by the same subset property one level up. Then run to the end. Land on the two answers, ⟨P0,A2,I1⟩ and ⟨P2,A0,I1⟩ — the worksheet's own answer names exactly these, reached by the same reasoning. Finally push k to 4 and 5 and watch the surviving set shrink; at k = 5 the only survivors suppress nearly everything.
@@ -283,8 +283,8 @@
       <text class="distribution-axis-label" x="510" y="252" text-anchor="middle">possible released value y</text>
     </svg>
     <div class="distribution-masses">
-      <span class="mass-d-label">blue area = \(\Pr[M(D)\in O]\)</span>
-      <span class="mass-dp-label">purple area = \(\Pr[M(D')\in O]\)</span>
+      <span class="mass-d-label">blue area represents \(\Pr[M(D)\in O]\)</span>
+      <span class="mass-dp-label">purple area represents \(\Pr[M(D')\in O]\)</span>
     </div>
   </div>
   <div class="reveal-question"><span>DP requires the two shaded probabilities to stay within an \(e^\varepsilon\) factor</span><b>for every region \(O\)</b></div>
@@ -448,9 +448,9 @@
   <h3>The Laplace mechanism needs only \(\Delta f\) and \(\varepsilon\)</h3>
   <div class="mechanism-formula">
     <span class="formula-piece"><small>exact query</small>\(f(D)\)</span>
-    <b>+</b>
+    <b>\(+\)</b>
     <span class="formula-piece noise"><small>fresh random noise</small>\(Y \sim \mathrm{Lap}(\Delta f/\varepsilon)\)</span>
-    <b>=</b>
+    <b>\(=\)</b>
     <span class="formula-piece"><small>released answer</small>\(M(D)\)</span>
   </div>
   <div class="grid2 small">
@@ -534,9 +534,9 @@
   <h3>Composition turns repeated releases into a ledger</h3>
   <div class="budget-ledger">
     <div><span>Query 1</span><b>\(\varepsilon_1 = 0.2\)</b></div>
-    <div class="ledger-plus">+</div>
+    <div class="ledger-plus">\(+\)</div>
     <div><span>Query 2</span><b>\(\varepsilon_2 = 0.3\)</b></div>
-    <div class="ledger-plus">=</div>
+    <div class="ledger-plus">\(=\)</div>
     <div class="ledger-total"><span>Sequence</span><b>\(\varepsilon_{total} = 0.5\)</b></div>
   </div>
   <div class="eq math small">\[ M(D)=\big(M_1(D),M_2(D)\big) \text{ is } (\varepsilon_1+\varepsilon_2)\text{-DP}. \]</div>
@@ -605,7 +605,7 @@
 <section class="lab" data-part="4">
   <div class="eyebrow">Optional extension</div>
   <h3>Lab 9 · When is the membership bound numerically binding?</h3>
-  <p class="lab-brief">The green curve is the bound. The dashed line is week 3's lab 5: 73% attack accuracy at the best threshold, i.e. advantage 2(0.73) − 1 = 0.46.</p>
+  <p class="lab-brief">The green curve is the bound. The dashed line is week 3's lab 5: 73% attack accuracy at the best threshold, i.e. advantage \(2(0.73)-1=0.46\).</p>
   <div class="demo" data-demo="dpMembership"></div>
   <aside class="notes">
     Press <b>halve Week 3</b>: the curve shows which ε makes the formal upper bound half of the Week 3 baseline advantage. Move to ε = 1 and note that the bound is then above 1. The teaching point is how to read an upper bound, not to infer empirical attack accuracy from it.

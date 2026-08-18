@@ -257,6 +257,12 @@ em { color: var(--accent-2); font-style: normal; font-weight: 600; }
 svg text { font-family: var(--font); fill: var(--ink-dim); }
 .grid-line { stroke: rgba(113,132,155,.18); stroke-width: 1; }
 .axis-label { fill: var(--ink-faint); font-size: 12px; font-family: var(--mono); }
+.svg-html-label {
+  color: var(--ink-faint); font: 12px/18px var(--mono); white-space: nowrap;
+}
+.svg-html-label.center { text-align: center; }
+.svg-html-label.end { text-align: right; }
+.svg-html-label mjx-container { margin: 0 !important; color: inherit; }
 .faint-label { opacity: .65; }
 .empty-chart-label { fill: var(--ink-faint); font-size: 15px; font-family: var(--font); }
 .zone-label { fill: var(--accent-2); font-size: 12px; opacity: .8; }
