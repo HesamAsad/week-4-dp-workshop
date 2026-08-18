@@ -786,6 +786,24 @@ mjx-container[jax="SVG"][display="true"] { margin: .3em 0 !important; }
 .coin-tree .branch { padding-left: 1.1em; border-left: 2px solid var(--line); margin: .25em 0; }
 .coin-tree b { color: var(--accent); }
 
+.rr-stage {
+  display: grid; grid-template-columns: minmax(250px, .82fr) minmax(0, 2.18fr);
+  gap: .8em; align-items: stretch; min-height: 360px; margin-top: .3em;
+}
+.rr-metrics {
+  grid-template-columns: 1fr; grid-template-rows: repeat(4, 1fr);
+  gap: .35em; margin-top: 0;
+}
+.rr-metrics .metric { display: flex; flex-direction: column; justify-content: center; }
+.rr-probability-panel {
+  display: flex; flex-direction: column; justify-content: center; min-width: 0;
+  padding: .55em .7em; border-left: 1px solid var(--line);
+}
+.rr-panel-title {
+  margin-bottom: .8em; color: var(--ink-faint); font: 600 .42em var(--mono);
+  letter-spacing: .08em; text-transform: uppercase;
+}
+
 .ratio-bars { display: grid; gap: .35em; margin-top: .3em; }
 .ratio-row { display: grid; grid-template-columns: 11.6em 1fr 4.2em; align-items: center; gap: .5em; font-size: .44em; }
 .ratio-label { color: var(--ink-dim); font-family: var(--mono); white-space: nowrap; }
@@ -794,6 +812,10 @@ mjx-container[jax="SVG"][display="true"] { margin: .3em 0 !important; }
 .ratio-fill.truth { background: linear-gradient(90deg, rgba(72,184,255,.55), var(--accent)); }
 .ratio-fill.lie   { background: linear-gradient(90deg, rgba(255,155,115,.5), var(--accent-2)); }
 .ratio-value { font-family: var(--mono); color: var(--ink); text-align: right; }
+.rr-probability-panel .ratio-bars { gap: .9em; margin-top: 0; }
+.rr-probability-panel .ratio-row { grid-template-columns: 18em minmax(0, 1fr) 4.5em; font-size: .5em; }
+.rr-probability-panel .ratio-track { height: 1.25em; }
+.rr-probability-panel .verdict { margin-top: 1em; }
 
 /* ---------- Lab 4 · a mechanism that is not DP ---------- */
 

@@ -703,15 +703,20 @@
     }, 'active');
     const lectureBtn = button(`The lecture’s ${inlineMath('p=0.5')}`, () => { p = 0.5; pSlider.set(p); render(); });
 
+    const metrics = h('div', { class: 'metric-row metric-row-four rr-metrics' }, [epsMetric, ratioMetric, estMetric, errMetric]);
+    const probabilityPanel = h('div', { class: 'rr-probability-panel' }, [
+      h('div', { class: 'rr-panel-title' }, ['conditional probabilities of reporting Yes']),
+      bars,
+      verdict
+    ]);
+
     root.append(
       h('div', { class: 'lab-toolbar' }, [
         h('div', { class: 'toolbar-left' }, [pSlider.node,
           h('span', { class: 'lab-note', html: `fixed: ${inlineMath('n=2{,}000')} · true Yes rate ${inlineMath('=30\\%')}` }, [])]),
         h('div', { class: 'btn-group' }, [solveBtn, lectureBtn])
       ]),
-      h('div', { class: 'metric-row metric-row-four' }, [epsMetric, ratioMetric, estMetric, errMetric]),
-      bars,
-      verdict
+      h('div', { class: 'rr-stage' }, [metrics, probabilityPanel])
     );
 
     function render() {
