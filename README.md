@@ -4,7 +4,7 @@ An interactive tutorial on Incognito and differential privacy, grounded in COMP9
 
 **Live tutorial:** https://hesamasad.github.io/week-4-dp-workshop/
 
-The Reveal.js deck runs 45 slides in the worksheet's exact Question 1 → Question 9 order. Short prerequisite visuals appear inside the question that first needs them: Week 3 record linkage before Question 1, the DP definition before Question 2, sensitivity before Question 3, post-processing before Question 8, and composition last in optional Question 9. A persistent question marker keeps the current worksheet number visible.
+The Reveal.js deck runs 47 slides in the worksheet's exact Question 1 → Question 9 order. A short k-anonymity recap defines the guarantee, unpacks its formula, and explains generalisation, suppression, monotonicity, and the homogeneity limitation before Question 1. Other prerequisite visuals appear inside the question that first needs them: the DP definition before Question 2, sensitivity before Question 3, post-processing before Question 8, and composition last in optional Question 9. A persistent question marker keeps the current worksheet number visible.
 
 For a 55-minute class, shorten or skip an interactive exploration rather than jumping ahead to a later worksheet question.
 
