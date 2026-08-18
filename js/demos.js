@@ -861,7 +861,7 @@
     const answerMetric = metric('One DP answer', '—', 'model-tone', 'true value + Lap(b)');
     const errorMetric = metric('Typical error', '—', '', 'std dev = √2 · b');
 
-    const chart = svgEl('svg', { viewBox: '0 0 900 168', role: 'img', 'aria-label': 'Distribution of the differentially private answer around the true value' });
+    const chart = svgEl('svg', { viewBox: '0 0 900 168', role: 'img', 'aria-label': 'Probability density of released values under two neighbouring datasets, with one sampled release marked' });
     const formula = h('div', { class: 'eq math small' }, []);
     const assumption = h('div', { class: 'assumption' }, []);
     const verdict = verdictBox('');
@@ -945,6 +945,7 @@
 
       chart.replaceChildren(
         svgEl('line', { class: 'grid-line', x1: pad, y1: H - 26, x2: W - pad, y2: H - 26 }),
+        svgEl('line', { class: 'grid-line', x1: pad, y1: 22, x2: pad, y2: H - 26 }),
         svgEl('path', { d: path(truth), fill: 'none', stroke: 'var(--accent)', 'stroke-width': 2.2 }),
         svgEl('path', { d: path(truth + df), fill: 'none', stroke: 'var(--accent-2)', 'stroke-width': 2.2, 'stroke-dasharray': '5 4' }),
         svgEl('line', { x1: sx(truth), y1: 22, x2: sx(truth), y2: H - 26, stroke: 'var(--accent)', 'stroke-width': 1, 'stroke-dasharray': '3 3', opacity: .7 }),
@@ -952,6 +953,8 @@
         svgText({ class: 'axis-label', x: sx(truth), y: 16, 'text-anchor': 'middle', fill: 'var(--accent)' }, `f(D) = ${truth.toFixed(1)}`),
         svgText({ class: 'axis-label', x: clamp(sx(truth + df), pad, W - pad - 90), y: 16, fill: 'var(--accent-2)' }, `f(D′) = ${(truth + df).toFixed(1)}`),
         svgText({ class: 'axis-label', x: clamp(sx(draw), pad, W - pad - 80), y: sy(pdf(draw, truth)) - 12, fill: 'var(--accent-3)' }, `released ${draw.toFixed(1)}`),
+        svgText({ class: 'axis-label', x: pad + 6, y: 36 }, 'probability density'),
+        svgText({ class: 'axis-label', x: W / 2, y: H - 8, 'text-anchor': 'middle' }, 'possible released value'),
         svgText({ class: 'axis-label', x: pad, y: H - 8 }, x0.toFixed(0)),
         svgText({ class: 'axis-label', x: W - pad, y: H - 8, 'text-anchor': 'end' }, x1.toFixed(0))
       );
@@ -991,7 +994,7 @@
     const totalMetric = metric('Simulated RMSE', '—', 'attack-tone', 'root-mean-square error');
     const bestMetric = metric('Best C in this sample', '—', '', 'lowest simulated RMSE');
 
-    const chart = svgEl('svg', { viewBox: '0 0 900 260', role: 'img', 'aria-label': 'Error against the clipping bound' });
+    const chart = svgEl('svg', { viewBox: '0 0 900 260', role: 'img', 'aria-label': 'Clipping bias, privacy noise, and total root-mean-square error in dollars against the clipping bound' });
     const verdict = verdictBox('');
 
     const clipSlider = slider({
@@ -1061,6 +1064,7 @@
 
       chart.replaceChildren(
         svgEl('line', { class: 'grid-line', x1: pad, y1: H - 30, x2: W - pad, y2: H - 30 }),
+        svgEl('line', { class: 'grid-line', x1: pad, y1: 20, x2: pad, y2: H - 30 }),
         curve(bias, 'var(--accent-4)', '5 4'),
         curve(noise, 'var(--accent)', '5 4'),
         curve(total, 'var(--accent-2)'),
@@ -1070,6 +1074,8 @@
         svgText({ class: 'axis-label', x: sx(best), y: 15, 'text-anchor': 'middle', fill: 'var(--accent-3)' }, 'best C'),
         svgText({ class: 'axis-label', x: pad, y: 20, fill: 'var(--accent-4)' }, 'bias from clipping'),
         svgText({ class: 'axis-label', x: W - pad, y: 20, 'text-anchor': 'end', fill: 'var(--accent)' }, 'noise ∝ C'),
+        svgText({ class: 'axis-label', x: sx(best) + 16, y: sy(total(best)) + 18, fill: 'var(--accent-2)' }, 'total RMSE'),
+        svgText({ class: 'axis-label', x: pad + 6, y: 39 }, 'error ($)'),
         svgText({ class: 'axis-label', x: W / 2, y: H - 8, 'text-anchor': 'middle' }, 'clipping bound C  (log scale)'),
         svgText({ class: 'axis-label', x: pad, y: H - 8 }, '$20K'),
         svgText({ class: 'axis-label', x: W - pad, y: H - 8, 'text-anchor': 'end' }, '$8M')
@@ -1111,7 +1117,7 @@
     const avgMetric = metric('Error after averaging', '—', '', 'if you repeat one query');
 
     const bar = h('div', { class: 'budget-bar' }, []);
-    const chart = svgEl('svg', { viewBox: '0 0 900 230', role: 'img', 'aria-label': 'Error against the number of queries under a fixed budget' });
+    const chart = svgEl('svg', { viewBox: '0 0 900 230', role: 'img', 'aria-label': 'Noise standard deviation in count units against the number of queries under one fixed privacy budget' });
     const verdict = verdictBox('');
 
     const epsSlider = slider({
@@ -1149,7 +1155,8 @@
       setMetric(perMetric, perEps(queries).toFixed(3), `${queries} × ${perEps(queries).toFixed(3)} = ${totalEps.toFixed(1)}`);
       setMetric(spentMetric, totalEps.toFixed(2), 'ε₁ + ε₂ + … + ε_k');
       setMetric(errMetric, `σ = ${perError(queries).toFixed(1)}`, `standard deviation; count Δf = 1`);
-      setMetric(avgMetric, `σ = ${avgError(queries).toFixed(1)}`, strategy === 'repeat' ? 'standard deviation of the average' : 'only defined if the query repeats');
+      setMetric(avgMetric, strategy === 'repeat' ? `σ = ${avgError(queries).toFixed(1)}` : '—',
+        strategy === 'repeat' ? 'standard deviation of the average' : 'not applicable to different queries');
       avgMetric.classList.toggle('is-leak', strategy === 'repeat' && avgError(queries) > avgError(1));
 
       bar.replaceChildren(...[
@@ -1173,8 +1180,9 @@
 
       chart.replaceChildren(...[
         svgEl('line', { class: 'grid-line', x1: pad, y1: H - 30, x2: W - pad, y2: H - 30 }),
-        line(perError, 'var(--accent-2)'),
-        line(avgError, 'var(--accent-3)', '5 4'),
+        svgEl('line', { class: 'grid-line', x1: pad, y1: 18, x2: pad, y2: H - 30 }),
+        strategy === 'split' ? line(perError, 'var(--accent-2)') : null,
+        strategy === 'repeat' ? line(avgError, 'var(--accent-3)', '5 4') : null,
         svgEl('line', { x1: sx(queries), y1: 18, x2: sx(queries), y2: H - 30, stroke: 'var(--ink)', 'stroke-width': 1.1, opacity: .5 }),
         /* where a single unrepeated query would have landed */
         strategy === 'repeat'
@@ -1184,8 +1192,13 @@
           ? svgText({ class: 'axis-label', x: pad + 6, y: sy(avgError(1)) - 7 }, `asking once: σ=${avgError(1).toFixed(1)}`)
           : null,
         svgEl('circle', { cx: sx(queries), cy: sy(strategy === 'repeat' ? avgError(queries) : perError(queries)), r: 5, fill: strategy === 'repeat' ? 'var(--accent-3)' : 'var(--accent-2)' }),
-        svgText({ class: 'axis-label', x: pad + 6, y: 18, fill: 'var(--accent-2)' }, 'error of one answer  ∝ k'),
-        svgText({ class: 'axis-label', x: W - pad, y: 18, 'text-anchor': 'end', fill: 'var(--accent-3)' }, 'error after averaging  ∝ √k'),
+        strategy === 'split'
+          ? svgText({ class: 'axis-label', x: pad + 6, y: 18, fill: 'var(--accent-2)' }, 'one answer: σ ∝ k')
+          : null,
+        strategy === 'repeat'
+          ? svgText({ class: 'axis-label', x: W - pad, y: 18, 'text-anchor': 'end', fill: 'var(--accent-3)' }, 'average: σ ∝ √k')
+          : null,
+        svgText({ class: 'axis-label', x: pad + 6, y: 37 }, 'noise std. dev. (count units)'),
         svgText({ class: 'axis-label', x: W / 2, y: H - 8, 'text-anchor': 'middle' }, 'number of queries k, under one fixed budget'),
         svgText({ class: 'axis-label', x: pad, y: H - 8 }, '1'),
         svgText({ class: 'axis-label', x: W - pad, y: H - 8, 'text-anchor': 'end' }, String(kMax))
@@ -1221,7 +1234,7 @@
     const bitesMetric = metric('Does it bite?', '—', 'attack-tone', 'against the week 3 attack');
     const thresholdMetric = metric('Beats week 3 below', '—', 'model-tone', 'ε where bound = 0.46');
 
-    const chart = svgEl('svg', { viewBox: '0 0 900 240', role: 'img', 'aria-label': 'Membership advantage bound against epsilon' });
+    const chart = svgEl('svg', { viewBox: '0 0 900 240', role: 'img', 'aria-label': 'Membership advantage upper bound from zero to one against epsilon on a logarithmic scale' });
     const verdict = verdictBox('');
 
     const epsSlider = slider({
@@ -1265,13 +1278,15 @@
       chart.replaceChildren(
         svgEl('line', { class: 'grid-line', x1: pad, y1: sy(1), x2: W - pad, y2: sy(1) }),
         svgEl('line', { class: 'grid-line', x1: pad, y1: H - 32, x2: W - pad, y2: H - 32 }),
+        svgEl('line', { class: 'grid-line', x1: pad, y1: 20, x2: pad, y2: H - 32 }),
         svgEl('rect', { x: sx(Math.log(2)), y: 20, width: W - pad - sx(Math.log(2)), height: H - 52, fill: 'rgba(255,155,115,.09)' }),
         svgEl('path', { d, fill: 'none', stroke: 'var(--accent-3)', 'stroke-width': 2.6 }),
         svgEl('line', { x1: pad, y1: sy(UNDEFENDED), x2: W - pad, y2: sy(UNDEFENDED), stroke: 'var(--accent-2)', 'stroke-width': 1.5, 'stroke-dasharray': '5 4' }),
         svgEl('line', { x1: sx(eps), y1: 20, x2: sx(eps), y2: H - 32, stroke: 'var(--ink)', 'stroke-width': 1.1, opacity: .5 }),
         svgEl('circle', { cx: sx(eps), cy: sy(Math.min(1.15, raw)), r: 5, fill: 'var(--accent-3)' }),
+        svgText({ class: 'axis-label', x: pad + 6, y: 28 }, 'membership advantage bound (0–1)'),
         svgText({ class: 'axis-label', x: pad + 6, y: sy(UNDEFENDED) - 7, fill: 'var(--accent-2)' }, `week 3's undefended attack: advantage ${UNDEFENDED.toFixed(2)} (73% accuracy)`),
-        svgText({ class: 'axis-label', x: pad + 6, y: sy(1) - 7 }, 'advantage 1 — the bound stops meaning anything'),
+        svgText({ class: 'axis-label', x: pad + 6, y: sy(1) - 7 }, 'bound = 1 — no restriction'),
         svgText({ class: 'axis-label', x: W - pad - 6, y: H - 44, 'text-anchor': 'end', fill: 'var(--accent-2)' }, 'ε > ln 2: the bound is vacuous'),
         svgText({ class: 'axis-label', x: W / 2, y: H - 8, 'text-anchor': 'middle' }, 'ε  (log scale)'),
         svgText({ class: 'axis-label', x: pad, y: H - 8 }, '0.01'),
