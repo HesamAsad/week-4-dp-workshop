@@ -225,14 +225,21 @@
 
   const cellOf = (row, attr, level) => LADDERS[attr].levels[level].f(row[COL[attr]]);
 
+  /** Every equivalence class induced by `levels` over attribute set `attrs`. */
+  function equivalenceClasses(attrs, levels) {
+    const groups = new Map();
+    ROWS.forEach(row => {
+      const values = attrs.map(a => cellOf(row, a, levels[a]));
+      const key = values.join('|');
+      if (!groups.has(key)) groups.set(key, { key, values, count: 0 });
+      groups.get(key).count += 1;
+    });
+    return [...groups.values()];
+  }
+
   /** Smallest equivalence-class size induced by `levels` over attribute set `attrs`. */
   function minClassSize(attrs, levels) {
-    const counts = new Map();
-    ROWS.forEach(row => {
-      const key = attrs.map(a => cellOf(row, a, levels[a])).join('|');
-      counts.set(key, (counts.get(key) || 0) + 1);
-    });
-    return Math.min(...counts.values());
+    return Math.min(...equivalenceClasses(attrs, levels).map(group => group.count));
   }
 
   const nodeKey = (attrs, levels) => attrs.map(a => `${a}${levels[a]}`).join(',');
@@ -439,7 +446,7 @@
               const scan = seen.find(s => s.key === node.key && s.kind === 'test');
               return h('span', { class: cls }, [
                 nodeLabel(node.attrs, node.levels),
-                scan ? h('span', { class: 'node-k', html: inlineMath(`k=${scan.size}`) }, []) : null
+                scan ? h('span', { class: 'node-k', html: inlineMath(`\\min |E|=${scan.size}`) }, []) : null
               ]);
             })));
           return h('div', { class: 'lattice-group' }, [
@@ -473,7 +480,42 @@
             h('b', { html: s.pass ? `satisfies ${inlineMath(`k=${run.k}`)}` : `fails ${inlineMath(`k=${run.k}`)}` }, [])])
           : h('span', { class: 'trace-dim' }, [`${s.label} ruled in by rollup from `, h('b', {}, [s.from]), ' — no scan needed'])
       ]));
+      const certificate = (() => {
+        if (!current) {
+          return h('div', { class: 'k-certificate' }, [
+            h('div', { class: 'k-certificate-head' }, [h('b', {}, ['current k-check']), h('span', {}, [`target k = ${run.k}`])]),
+            h('span', { class: 'k-certificate-note' }, ['Press Step to partition the 12 rows into the first set of equivalence classes.'])
+          ]);
+        }
+
+        const classes = equivalenceClasses(current.attrs, current.levels);
+        const minSize = Math.min(...classes.map(group => group.count));
+        const passes = minSize >= run.k;
+        return h('div', { class: 'k-certificate' }, [
+          h('div', { class: 'k-certificate-head' }, [
+            h('b', {}, [`${current.label} · current partition`]),
+            h('span', {}, [`${classes.length} class${classes.length === 1 ? '' : 'es'}`])
+          ]),
+          h('div', { class: 'k-class-list' }, classes.map(group => h('div', {
+            class: `k-class-row ${group.count === minSize ? 'smallest' : ''}`
+          }, [
+            h('span', { class: 'k-class-pattern', title: group.values.join(' · ') }, [group.values.join(' · ')]),
+            h('span', { class: 'k-class-count', html: inlineMath(`|E|=${group.count}`) }, [])
+          ]))),
+          h('div', {
+            class: `k-certificate-test ${passes ? 'pass' : 'fail'}`,
+            html: inlineMath(`\\min_E |E|=${minSize}\\;${passes ? '\\ge' : '<'}\\;k=${run.k}\\quad${passes ? '\\checkmark' : '\\times'}`)
+          }, []),
+          h('span', { class: 'k-certificate-note' }, [
+            current.kind === 'imply'
+              ? `Counts are shown for learning; Incognito infers this pass from ${current.from} without scanning the table.`
+              : 'The smallest displayed class decides whether this candidate passes.'
+          ])
+        ]);
+      })();
+
       trace.replaceChildren(
+        certificate,
         h('div', { class: 'lattice-title' }, ['algorithm trace · newest first']),
         h('div', { class: 'step-trace' }, lines.length ? lines : [h('div', { class: 'trace-dim' }, ['nothing scanned yet'])])
       );

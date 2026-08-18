@@ -4,7 +4,7 @@ An interactive tutorial on Incognito and differential privacy, grounded in COMP9
 
 **Live tutorial:** https://hesamasad.github.io/week-4-dp-workshop/
 
-The Reveal.js deck runs 47 slides in the worksheet's exact Question 1 → Question 9 order. A short k-anonymity recap defines the guarantee, unpacks its formula, and explains generalisation, suppression, monotonicity, and the homogeneity limitation before Question 1. Other prerequisite visuals appear inside the question that first needs them: the DP definition before Question 2, sensitivity before Question 3, post-processing before Question 8, and composition last in optional Question 9. A persistent question marker keeps the current worksheet number visible.
+The Reveal.js deck runs 48 slides in the worksheet's exact Question 1 → Question 9 order. A short k-anonymity recap defines the guarantee, unpacks its formula, and explains generalisation, suppression, monotonicity, and the homogeneity limitation before Question 1. Other prerequisite visuals appear inside the question that first needs them: the DP definition before Question 2, sensitivity before Question 3, post-processing before Question 8, and composition last in optional Question 9. A persistent question marker keeps the current worksheet number visible.
 
 For a 55-minute class, shorten or skip an interactive exploration rather than jumping ahead to a later worksheet question.
 
@@ -24,8 +24,9 @@ For a 55-minute class, shorten or skip an interactive exploration rather than ju
 
 ## What the labs do
 
-- **Question 1 lab A — Incognito.** Steps through the real algorithm on the worksheet's twelve rows and reaches the worksheet's two minimal 3-anonymous generalisations.
-- **Question 1 lab B — released tables.** Compares the two minimal answers, their information loss, and the remaining homogeneity leak.
+- **Question 1 lab A — original table.** Shows all twelve worksheet rows and labels the quasi-identifiers and sensitive attribute before any generalisation.
+- **Question 1 lab B — Incognito.** Steps through the real algorithm, displaying every current equivalence-class count and testing its minimum against the selected k.
+- **Question 1 lab C — released tables.** Compares the two minimal answers, their information loss, and the remaining homogeneity leak.
 - **Question 2 lab — randomised response.** Solves `p = 3/4` for `ε = ln 7` and exposes the privacy–utility trade.
 - **Question 3 lab — sensitivity.** Compares sum and average queries; the Question 4 toggle then doubles `Δf` to `2h`.
 - **Question 5 lab — what ε forbids.** Turns ε into a permitted belief update, showing why `ε = 50` is extremely permissive.
