@@ -1,0 +1,677 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="COMP90073 interactive workshop on k-anonymity via Incognito and differential privacy">
+  <title>COMP90073 · Workshop Week 4 — K-Anonymity &amp; Differential Privacy</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2309111f'/%3E%3Cpath d='M6 22c4-12 6-12 10 0s6 12 10 0' fill='none' stroke='%2348b8ff' stroke-width='2.4' stroke-linecap='round'/%3E%3Ccircle cx='16' cy='9' r='2.4' fill='%23ff9b73'/%3E%3C/svg%3E">
+
+  <link rel="stylesheet" href="css/inter.css">
+  <link rel="stylesheet" href="reveal/dist/reset.css">
+  <link rel="stylesheet" href="reveal/dist/reveal.css">
+  <link rel="stylesheet" href="reveal/plugin/highlight/monokai.css">
+  <link rel="stylesheet" href="css/deck.css">
+
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']]
+      },
+      svg: { fontCache: 'global' },
+      options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] },
+      startup: { typeset: false }
+    };
+  </script>
+  <script src="vendor/mathjax/tex-svg.js" id="MathJax-script"></script>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+<!-- ============================================================ -->
+<section class="title-slide">
+  <div class="kicker">COMP90073 · Trustworthy Machine Learning · Workshop Week 4</div>
+  <h1>From hiding the row<br>to bounding the difference</h1>
+  <div class="title-rule"></div>
+  <p class="sub">Last week we hid <em>which row is Alice</em> — and the secret leaked anyway.<br>
+    This week the question changes to
+    <span class="pill privacy">would the output look different if Alice had stayed home?</span></p>
+  <div class="qr-invite">
+    <div class="qr-card"><img src="assets/qr-workshop.svg" width="132" height="132"
+      alt="QR code linking to the workshop site"></div>
+    <div class="qr-text">
+      <span class="qr-lead">Scan to run the labs on your own device</span>
+      <span class="qr-url">hesamasad.github.io/week-4-dp-workshop</span>
+    </div>
+  </div>
+  <p class="tiny faint" style="margin-top:1em">← → or space to navigate · <span class="mono">S</span> facilitator notes · <span class="mono">O</span> overview · <span class="mono">F</span> fullscreen</p>
+  <aside class="notes">
+    <b>Timing: ~55 min.</b> Open by naming the pivot. Week 3 ended on the homogeneity attack: a k-anonymous table in which a whole equivalence class shared one sensitive value. Identity was hidden; the secret was not. That failure is what motivates a definition that never mentions identity at all. Everything on screen is a live simulation running in the browser — invite students to drive it.
+  </aside>
+</section>
+
+<!-- ============================================================ -->
+<section>
+  <h2>Nine questions, four things you have to get right</h2>
+  <div class="grid2" style="align-items:stretch">
+    <div class="card release-card">
+      <div class="part-num">PART 01 · Q1</div>
+      <h4>THE TABLE YOU GENERALISE</h4>
+      <p class="small">Search a lattice of generalisations for the least coarse one that is still 3-anonymous — without scanning all of it.</p>
+      <span class="pill privacy">Incognito · subset property · rollup</span>
+    </div>
+    <div class="card release-card">
+      <div class="part-num">PART 02 · Q2, Q5, Q6</div>
+      <h4>THE GUARANTEE YOU CLAIM</h4>
+      <p class="small">What \(\varepsilon\) actually forbids, a mechanism that no \(\varepsilon\) can save, and privacy with no trusted curator at all.</p>
+      <span class="pill model">the definition · local DP</span>
+    </div>
+    <div class="card release-card">
+      <div class="part-num">PART 03 · Q3, Q4, Q7</div>
+      <h4>THE NOISE YOU CALIBRATE</h4>
+      <p class="small">Sensitivity of a sum and an average, what one unusually wide value costs, and what to do when the domain is unbounded.</p>
+      <span class="pill attack">sensitivity · Laplace · clipping</span>
+    </div>
+    <div class="card release-card">
+      <div class="part-num">PART 04 · Q8, Q9</div>
+      <h4>THE BUDGET YOU SPEND</h4>
+      <p class="small">Composition across releases, and whether a DP-trained model really stops the membership attack from week 3.</p>
+      <span class="pill model">composition · DP-SGD</span>
+    </div>
+  </div>
+  <div class="takeaway"><b>The habit we are building:</b> a privacy claim is a quantifier. Over which pairs of datasets, over which outputs, and against an adversary who knows what?</div>
+  <aside class="notes">
+    This maps the worksheet exactly: Q1 is k-anonymity, Q2/Q5/Q6 are about the definition itself, Q3/Q4/Q7 are mechanism design, Q8/Q9 are properties. Roughly 13 minutes per part. Ask the class which of the four they think is hardest to get right in practice — the answer is usually the last one.
+  </aside>
+</section>
+
+<!-- ============================================================ -->
+<section>
+  <h3>The pivot from last week</h3>
+  <div class="grid2">
+    <div class="card">
+      <h4>WEEK 3 · A QUESTION ABOUT ROWS</h4>
+      <p class="small dim">“Can the adversary tell <em>which record</em> is Alice?”</p>
+      <p class="small dim">Defended by making records look alike: generalise the quasi-identifiers until every pattern occurs \(k\) times.</p>
+      <p class="small dim">Broke when a whole equivalence class shared one sensitive value. Ambiguity about identity is not privacy of the attribute.</p>
+    </div>
+    <div class="card">
+      <h4>WEEK 4 · A QUESTION ABOUT PARTICIPATION</h4>
+      <p class="small dim">“Would this output have been about as likely if Alice were not in the data at all?”</p>
+      <p class="small dim">Defended by randomising the <em>mechanism</em>, so no output is much more likely under one dataset than under its neighbour.</p>
+      <p class="small dim">Says nothing about rows, quasi-identifiers, or what the adversary already knows — which is exactly why it survives them.</p>
+    </div>
+  </div>
+  <div class="eq math small" style="margin-top:.7em">
+    \[ \text{Dalenius (1977): } \textit{nothing learnable from the release should be learnable without it} \;\longrightarrow\; \text{provably impossible} \]
+  </div>
+  <div class="takeaway"><b>Lecture 5's key idea:</b> not revealing information about individuals is impossible — a useful statistic must reveal something. So bound <em>the harm of participation</em> instead: whatever is learned would have been learned regardless of whether you joined.</div>
+  <aside class="notes">
+    Use the Cate Blanchett example and the smoking example from lecture 5. Both show that a release can change what the world believes about a person without that person's participation being the cause. Dalenius's requirement rules out useful statistics entirely; Dwork and Naor's 2010 impossibility result is the formal version. The reframing to "harm of participation" is the whole intellectual move of the week — spend a minute on it.
+  </aside>
+</section>
+
+<!-- ============================================================ PART 1 -->
+<section class="divider" data-part="1">
+  <div class="num">1</div>
+  <h2>The table you generalise</h2>
+  <p>Finding a 3-anonymous table is a search problem. Incognito's job is to avoid searching.</p>
+  <div class="divider-questions">Worksheet question 1 · Lecture 4</div>
+  <aside class="notes">Set up: we are given a 12-row table, three domain generalisation hierarchies, and a target of k = 3. The naive approach scans every combination of generalisation levels. Incognito uses two structural facts to skip most of them.</aside>
+</section>
+
+<section data-part="1">
+  <div class="eyebrow">60-second recap · lectures 3a, 3b &amp; 4</div>
+  <h3>The vocabulary Question 1 assumes you have</h3>
+  <div class="grid3 small">
+    <div class="card">
+      <h4>THREE KINDS OF COLUMN</h4>
+      <p class="dim"><b>Key attributes</b> — name, address, phone number. Uniquely identifying, and always removed before release.</p>
+      <p class="dim"><b>Quasi-identifiers</b> — e.g. (postcode, birth date, sex). Not identifying on their own, but a combination an adversary may already hold from another source.</p>
+      <p class="dim"><b>Sensitive attribute</b> — what you are trying to protect. In Question 1 that is <span class="mono">Loan taken</span>.</p>
+    </div>
+    <div class="card">
+      <h4>WHY REMOVING NAMES IS NOT ENOUGH</h4>
+      <p class="dim">Sweeney's Massachusetts breach: a de-identified medical release joined to the public voter list on ZIP + birth date + sex re-identified the state Governor.</p>
+      <p class="dim"><b>87%</b> of the US population is uniquely identified by those three fields alone.</p>
+      <p class="dim">Any attribute you add to a quasi-identifier set gives another quasi-identifier set — so the list only ever grows.</p>
+    </div>
+    <div class="card">
+      <h4>K-ANONYMITY · SAMARATI &amp; SWEENEY</h4>
+      <p class="dim">Each released record cannot be distinguished from at least <b>k − 1</b> others in the release.</p>
+      <p class="dim">Equivalently: every combination of quasi-identifier values occurs in <b>at least k records</b>. Such a group is an <b>equivalence class</b>.</p>
+      <p class="dim">Reached by <b>generalisation</b> (replace a value with a coarser one) and <b>suppression</b> (drop it entirely).</p>
+    </div>
+  </div>
+  <div class="takeaway"><b>A domain generalisation hierarchy</b> is just the ladder of coarser domains for one attribute — <span class="mono">3000 → 30* → 3*</span>. Question 1 hands you one ladder per quasi-identifier and asks for the least generalised combination that still reaches k = 3.</div>
+  <aside class="notes">
+    Thirty seconds each. The point students most often miss is the last line of the middle card — the quasi-identifier set is not fixed by the data, it is fixed by what else exists in the world, which is why lecture 4 says Q + {A'} is a quasi-identifier whenever Q is. Everything in part 1 is a search over generalisations of the quasi-identifiers only; the sensitive column is never generalised.
+  </aside>
+</section>
+
+
+<section data-part="1">
+  <div class="eyebrow">QUESTION 1 · THE SET-UP</div>
+  <h3>Twelve records, three ladders, one target</h3>
+  <div class="grid2">
+    <div class="card small">
+      <h4>THE QUASI-IDENTIFIERS AND THEIR HIERARCHIES</h4>
+      <table class="tbl small" style="font-size:.82em">
+        <tr><th>Attribute</th><th>Level 0</th><th>Level 1</th><th>Level 2</th></tr>
+        <tr><td>postcode</td><td class="mono">30*, 31*, 3[2,4,5]*</td><td class="mono">3[0,1]*, 3[2,4,5]*</td><td class="mono">3*</td></tr>
+        <tr><td>age</td><td class="mono">21-30, 31-40, 41+</td><td class="mono">21-30, 31+</td><td class="mono">*</td></tr>
+        <tr><td>income</td><td class="mono">0-49K, 50-99K, 100K+</td><td class="mono">*</td><td class="faint">—</td></tr>
+      </table>
+      <p class="tiny faint" style="margin-top:.5em">\(3[2,4,5]*\) means any code starting 32, 34 or 35.</p>
+    </div>
+    <div class="card small">
+      <h4>WHAT MAKES THE SEARCH EXPENSIVE</h4>
+      <p class="small dim">Three ladders of height 3, 3 and 2 give \(3 \times 3 \times 2 = 18\) full-domain generalisations. Testing one means a full pass over the data to count equivalence classes.</p>
+      <p class="small dim">Finding the <em>least generalised</em> table satisfying \(k\) is NP-hard in general (Meyerson &amp; Williams, PODS 2004). Incognito does not solve it by being clever about the optimum — it solves it by never visiting most of the lattice.</p>
+    </div>
+  </div>
+  <div class="takeaway"><b>Before the lab, predict:</b> which single attribute do you expect to fail 3-anonymity first, and why? Look at the income column of the worksheet table.</div>
+  <aside class="notes">
+    Let the class read the data. Incomes are 100, 70, 60, 80, 110, 40, 55, 80, 30, 50, 55, 45 — bucketed at level 0 that is 3 / 7 / 2, and the class of size 2 (the two six-figure earners) already kills 3-anonymity. That single observation removes half the lattice before the search reaches two dimensions, which is the lesson of the lab.
+  </aside>
+</section>
+
+<section data-part="1">
+  <h3>The two facts Incognito runs on</h3>
+  <div class="grid2">
+    <div class="card">
+      <h4>SUBSET PROPERTY · PRUNES ACROSS DIMENSIONS</h4>
+      <div class="eq math small">\[ D \text{ is } k\text{-anon wrt } Q \;\Longrightarrow\; D \text{ is } k\text{-anon wrt every } P \subseteq Q \]</div>
+      <p class="small dim">Dropping an attribute can only merge equivalence classes, never split them. Used backwards: if a table fails on <em>income alone</em>, every combination containing income fails too — so those nodes are never generated.</p>
+    </div>
+    <div class="card">
+      <h4>ROLLUP / MONOTONICITY · PRUNES UPWARD</h4>
+      <div class="eq math small">\[ \langle P_0, A_0\rangle \text{ satisfies } k \;\Longrightarrow\; \text{everything above it does} \]</div>
+      <p class="small dim">Generalising further can only merge classes. So the sweep runs bottom-up and stops at the <em>first</em> success on each branch: everything above is settled without another scan.</p>
+    </div>
+  </div>
+  <div class="takeaway"><b>Both are one-directional, and they travel along different axes.</b> A <em>failure</em> rules out every <b>larger attribute set</b> containing it — and says nothing about generalising further. A <em>success</em> rules out the need to test every <b>more generalised table</b> of the same attributes — and says nothing about larger attribute sets. Confusing the two is the standard exam mistake.</div>
+  <aside class="notes">
+    Draw the asymmetry explicitly on the board if it helps: dimension grows sideways, generalisation grows upward. Failure travels sideways (to bigger attribute sets); success travels upward (to coarser tables). The lattice picture in the lab colours these differently, and the trace log names which rule fired at each step.
+  </aside>
+</section>
+
+<section class="lab" data-part="1">
+  <h3>Lab 1 · Run Incognito on the worksheet's table</h3>
+  <p class="lab-brief">Step through the real algorithm. Every <span class="mono">k=</span> number is counted from the 12 rows; nothing is pre-computed.</p>
+  <div class="demo" data-demo="incognito"></div>
+  <aside class="notes">
+    Step through the 1-attribute phase by hand first — three scans settle postcode and age, and two settle income, with <span class="mono">I0</span> failing at a class of 2. Ask what that failure has just bought: every node containing income at level 0 is now dead, which is 9 of the 18 full-domain nodes. By the end the counter reads 13, not 9 — the extra four are the combinations whose postcode-and-age pair failed at two dimensions, pruned by the same subset property one level up. Then run to the end. Land on the two answers, ⟨P0,A2,I1⟩ and ⟨P2,A0,I1⟩ — the worksheet's own answer names exactly these, reached by the same reasoning. Finally push k to 4 and 5 and watch the surviving set shrink; at k = 5 the only survivors suppress nearly everything.
+  </aside>
+</section>
+
+<section class="lab" data-part="1">
+  <h3>Lab 2 · The table it hands back, and what that cost</h3>
+  <p class="lab-brief">Two incomparable answers. Both are 3-anonymous; they are not equally useful, and neither protects the sensitive column.</p>
+  <div class="demo" data-demo="releasedTable"></div>
+  <aside class="notes">
+    Start on ⟨P0,A2,I1⟩ — postcodes survive at their finest useful level, but age and income are gone entirely. Then switch to ⟨P2,A0,I1⟩ — now age survives and location is gone. Ask which release a bank would prefer, and make the point that "minimal" is a partial order, not a ranking: Incognito returns a set of incomparable answers and someone still has to choose. Then look at the loan column: some classes are homogeneous, so week 3's attack works on this table too. That is the bridge to part 2.
+  </aside>
+</section>
+
+<section data-part="1">
+  <h3>Where this approach runs out</h3>
+  <div class="grid3 small">
+    <div class="card"><h4>IT PROTECTS IDENTITY, NOT ATTRIBUTES</h4>A class of \(k\) records that all took the loan tells you the answer without telling you the row. Week 3's homogeneity attack, still working.</div>
+    <div class="card"><h4>IT DEPENDS ON NAMING THE QUASI-IDENTIFIERS</h4>Which columns are “identifying” depends on what external data exists — today and in five years. The guarantee is only as good as that guess.</div>
+    <div class="card"><h4>IT DOES NOT COMPOSE</h4>Two independently 3-anonymous releases of the same people can be intersected. Nothing in the definition bounds what happens next.</div>
+  </div>
+  <div class="takeaway"><b>So change the object being protected.</b> Not “which row is you”, but “whether you are here at all” — a property of the <em>mechanism</em>, which composes, needs no quasi-identifier list, and holds against any auxiliary knowledge.</div>
+  <aside class="notes">
+    Tie all three failures to the requirements list on lecture 5 slide 8: resilience to background knowledge, privacy without obscurity, post-processing, and graceful composition. k-anonymity satisfies none of the four in general. Differential privacy was designed against that list, and we will check each one off during parts 2 and 4.
+  </aside>
+</section>
+
+<!-- ============================================================ PART 2 -->
+<section class="divider" data-part="2">
+  <div class="num">2</div>
+  <h2>The guarantee you claim</h2>
+  <p>One inequality, quantified over every neighbouring pair and every output. Both quantifiers do real work.</p>
+  <div class="divider-questions">Worksheet questions 2, 5 &amp; 6 · Lectures 5 and 6</div>
+  <aside class="notes">Part 2 is about reading the definition precisely enough to use it as a proof obligation — which is exactly what questions 5 and 6 ask for.</aside>
+</section>
+
+<section data-part="2">
+  <div class="eyebrow">60-second recap · lecture 6</div>
+  <h3>Why the mechanism has to be random at all</h3>
+  <div class="grid3 small">
+    <div class="card">
+      <h4>1 · RETURN f(D) EXACTLY</h4>
+      <p class="dim">Two neighbouring datasets give two different answers. Take \(O\) to be one of them: probability 1 under one dataset, 0 under the other.</p>
+      <span class="status bad">not DP for any \(\varepsilon\)</span>
+    </div>
+    <div class="card">
+      <h4>2 · RETURN A FIXED CONSTANT</h4>
+      <p class="dim">Identical output distribution on every dataset, so the ratio is exactly 1.</p>
+      <span class="status good">0-DP — and useless</span>
+    </div>
+    <div class="card">
+      <h4>3 · IGNORE D AND RETURN NOISE</h4>
+      <p class="dim">Also independent of the data, so also perfectly private, and carries no information about \(f\).</p>
+      <span class="status good">DP — and still useless</span>
+    </div>
+  </div>
+  <div class="takeaway"><b>So the design problem is a trade, not a checkbox:</b> stay close enough to \(f(D)\) to be worth publishing, while keeping the output distributions of every neighbouring pair overlapping enough that no output betrays which dataset you held. Parts 2 and 3 are the two halves of that sentence.</div>
+  <aside class="notes">
+    Lecture 6's "trivial mechanisms" sequence, slides 9–11. Worth doing out loud because it kills two intuitions at once: that determinism can ever be private, and that privacy alone is the goal. Note for the sharp student: returning f(D) exactly <i>is</i> DP when f is constant — the failure needs f to differ on some neighbouring pair. A dataset here is a multiset of records; two are neighbouring if they differ in at most one record.
+  </aside>
+</section>
+
+
+<section data-part="2">
+  <h3>The definition, and where each piece bites</h3>
+  <div class="eq math">
+    \[ \Pr[M(D_1) \in O] \;\le\; e^{\varepsilon}\, \Pr[M(D_2) \in O]
+       \qquad \text{for all } \|D_1 - D_2\| \le 1 \text{ and all } O \subseteq \mathcal{O} \]
+  </div>
+  <div class="grid3 small" style="margin-top:.7em">
+    <div class="card"><h4>FOR ALL NEIGHBOURING PAIRS</h4>Not the pair you have — every pair differing in one record. This is what makes the guarantee independent of what the adversary already knows.</div>
+    <div class="card"><h4>FOR ALL OUTPUT SETS</h4>A single output set that violates the inequality is a counterexample. Question 6 is exactly this: find one \(O\).</div>
+    <div class="card"><h4>RANDOMNESS OF \(M\) ONLY</h4>The data is fixed; the probability is over the mechanism's coins. So \(M\) may be public, and only the noise draw must stay secret.</div>
+  </div>
+  <div class="takeaway"><b>Read \(\varepsilon\) as a price, not a probability:</b> it is the privacy cost of a query, and higher \(\varepsilon\) means less noise, more accuracy, and a weaker promise.</div>
+  <aside class="notes">
+    Stress the two universal quantifiers, because both questions in this part turn on them. Question 5 asks what a large ε means once the inequality is satisfied but toothless; question 6 asks students to exhibit one bad O. Note also that a deterministic non-constant mechanism can never be DP — which is lecture 6's "trivial attempts" sequence.
+  </aside>
+</section>
+
+<section class="lab" data-part="2">
+  <h3>Lab 3 · Question 5 — what does \(\varepsilon = 50\) actually forbid?</h3>
+  <p class="lab-brief">The inequality is satisfied at every \(\varepsilon\). The question is what it still rules out.</p>
+  <div class="demo" data-demo="epsilonMeaning"></div>
+  <aside class="notes">
+    Have the class predict before you move the slider: at ε = 1, how far can a 50% belief move? The answer, 26.9% to 73.1%, usually surprises people in both directions — it is a real shift, and it is bounded. Then jump to ε = 50 and let the band cover the axis. The worksheet's answer says the probability ratio is e^50 and that this is "unlikely to be produced by a neighbouring dataset"; make it concrete — e^50 is about 5 × 10²¹, so the bound forbids nothing any adversary would ever have believed. Finish on the Census preset: real deployments sit at ε values this picture calls useless, which is a genuine open tension, not a mistake.
+  </aside>
+</section>
+
+<section data-part="2">
+  <div class="eyebrow">QUESTION 6 · A PROOF OBLIGATION, BACKWARDS</div>
+  <h3>“Draw a record at random and return it.” Show this is not \(\varepsilon\)-DP.</h3>
+  <div class="grid2">
+    <div class="card small">
+      <h4>WHAT YOU HAVE TO PRODUCE</h4>
+      <p class="small dim">To prove DP you must show the inequality for <em>every</em> neighbouring pair and <em>every</em> \(O\). To disprove it you need one pair and one \(O\).</p>
+      <div class="eq math small">\[ \Pr[M(D)=\{d\}] = \tfrac{1}{|D|}, \qquad \Pr[M(D')=\{d\}] = 0 \]</div>
+    </div>
+    <div class="card small">
+      <h4>WHY NO \(\varepsilon\) RESCUES IT</h4>
+      <p class="small dim">The requirement becomes \(\tfrac{1}{|D|} \le e^{\varepsilon} \cdot 0 = 0\), which is false for every finite \(\varepsilon\).</p>
+      <p class="small dim">The failure is <em>support</em>, not scale: \(D\) can produce an output that \(D'\) simply cannot. Any mechanism that returns a genuine record has this shape.</p>
+    </div>
+  </div>
+  <div class="takeaway"><b>The general test:</b> if some output is possible under one dataset and impossible under a neighbour, no multiplicative bound can hold. Noise that fixes this must have full support — which is why Laplace, not a bounded uniform, is the mechanism of choice.</div>
+  <aside class="notes">
+    This is a short question but the reasoning generalises further than it looks. Ask the class which other "obvious" mechanisms fail this way: returning the maximum, returning the argmax record, returning any exact order statistic. Then ask what week 3's bounded noise in {−1, 0, 1} would do here — it is also finite-support, which is precisely why the certificate attack in week 3's lab 2 worked.
+  </aside>
+</section>
+
+<section class="lab" data-part="2">
+  <h3>Lab 4 · Find the output that breaks it</h3>
+  <p class="lab-brief">Pick which record the neighbouring dataset drops, then compare the two output distributions.</p>
+  <div class="demo" data-demo="notDP"></div>
+  <aside class="notes">
+    Let a student choose the removed record; the witness moves with it, which makes the point that this is not a quirk of one record. Then switch the mechanism to the Laplace count on the same neighbouring pair: same two datasets, same difference of one person, but now every output is reachable from both and the ratio is capped at e^ε. Ask what changed — the answer is the support of the output distribution, not the amount of noise.
+  </aside>
+</section>
+
+<section data-part="2">
+  <div class="eyebrow">QUESTION 2 · NO TRUSTED CURATOR</div>
+  <h3>Randomised response, and solving for \(\varepsilon = \ln 7\)</h3>
+  <div class="grid2">
+    <div class="card small">
+      <h4>THE MECHANISM (WARNER 1965)</h4>
+      <p class="small dim">With probability \(p\) answer truthfully; otherwise report Yes or No uniformly at random. The respondent randomises <em>before</em> the data leaves them, so the curator never holds a true value.</p>
+    </div>
+    <div class="card small">
+      <h4>THE CALCULATION</h4>
+      <div class="eq math small">
+        \[ \frac{\Pr[\mathsf{Yes} \mid \mathsf{Y}]}{\Pr[\mathsf{Yes} \mid \mathsf{N}]}
+           = \frac{p + \tfrac{1}{2}(1-p)}{\tfrac{1}{2}(1-p)}
+           = \frac{1+p}{1-p} = e^{\varepsilon} \]
+      </div>
+      <p class="small dim">Set \(\tfrac{1+p}{1-p} = 7\): then \(1+p = 7-7p\), so \(p = \tfrac{3}{4}\).</p>
+    </div>
+  </div>
+  <div class="takeaway"><b>Sanity check the direction:</b> \(p = \tfrac12\) is the lecture's double coin flip and gives \(\ln 3\). More truth means a larger ratio and a <em>weaker</em> guarantee, so \(\ln 7 > \ln 3\) must need \(p > \tfrac12\). It does.</div>
+  <aside class="notes">
+    Get the class to do the algebra before the lab, then check it on the slider. The direction check is worth labouring: students routinely solve the equation correctly and then assert that more privacy needs larger p. Note also that here a "dataset" is one person's single bit, so this is ε-DP for datasets of size 1 — local DP, and a strictly stronger trust model than central DP.
+  </aside>
+</section>
+
+<section class="lab" data-part="2">
+  <h3>Lab 5 · Turn the privacy dial and watch utility pay</h3>
+  <p class="lab-brief">The estimator stays unbiased at every \(p\). Only its interval moves — that is the entire trade.</p>
+  <div class="demo" data-demo="randomisedResponse"></div>
+  <aside class="notes">
+    Press <b>Solve for ε = ln 7</b> and confirm p lands on 0.75 with a ratio of exactly 7. Then drag p downward and watch two things at once: ε falls, and the 95% interval widens even though the point estimate stays centred. Show the estimator from lecture 6, x̂ = (Z/n − ½(1−p))/p, and note that its standard error carries a 1/p — that factor is the price of the lie. Finish by dropping n and asking how many respondents ln 7 would need for a ±1 point answer.
+  </aside>
+</section>
+
+<section data-part="2">
+  <h3>Two trust models, one definition</h3>
+  <table class="tbl small synthesis-table">
+    <tr><th></th><th>Central DP</th><th>Local DP</th></tr>
+    <tr><td><b>Protects</b></td><td>two neighbouring datasets</td><td>any two values of one person</td></tr>
+    <tr><td><b>Mechanism</b></td><td>Laplace on the aggregate</td><td>randomised response per respondent</td></tr>
+    <tr><td><b>Trust</b></td><td>curator sees raw data</td><td>nobody ever sees a true value</td></tr>
+    <tr><td><b>Noise on <span class="nowrap">count(Disease = Y)</span></b></td><td>\(O(1/\varepsilon)\) — independent of \(n\)</td><td>\(O(\sqrt{n}/\varepsilon)\) — grows with \(n\)</td></tr>
+  </table>
+  <div class="takeaway"><b>The price of removing the trusted curator</b> is a \(\sqrt{n}\) factor in the error. That is why Chrome, iOS and Windows telemetry — hundreds of millions of respondents — can afford local DP, and a hospital with 500 patients cannot.</div>
+  <aside class="notes">
+    Lecture 6's comparison table. The √n is the punchline: local DP noise per person is O(1/ε) and the errors add in quadrature across n people, so the aggregate carries √n·O(1/ε) while central DP adds noise once. Connect back to the deployments on lecture 5 slide 11 — every local-DP deployment named there has a user base large enough to absorb it.
+  </aside>
+</section>
+
+<!-- ============================================================ PART 3 -->
+<section class="divider" data-part="3">
+  <div class="num">3</div>
+  <h2>The noise you calibrate</h2>
+  <p>The mechanism is fixed. All the design work is in one number.</p>
+  <div class="divider-questions">Worksheet questions 3, 4 &amp; 7 · Lecture 6</div>
+  <aside class="notes">Parts 1 and 2 were about what to promise. Part 3 is the engineering: given the promise, how much noise, and how do you know?</aside>
+</section>
+
+<section data-part="3">
+  <div class="eyebrow">60-second recap · lecture 6</div>
+  <h3>The two definitions the next three questions use</h3>
+  <div class="grid2">
+    <div class="card small">
+      <h4>THE LAPLACE DISTRIBUTION · DEFINITION 3.2</h4>
+      <div class="eq math small">\[ \mathrm{Lap}(x \mid b) = \frac{1}{2b}\exp\!\left(-\frac{|x|}{b}\right), \qquad \sigma^2 = 2b^2 \]</div>
+      <p class="small dim">Centred at 0, symmetric, and — unlike a bounded uniform — strictly positive <em>everywhere</em>. A larger scale \(b\) means a flatter curve: more privacy, less accuracy.</p>
+    </div>
+    <div class="card small">
+      <h4>THE LAPLACE MECHANISM · DEFINITION 3.3</h4>
+      <div class="eq math small">\[ \mathcal{M}_L(x, f, \varepsilon) = f(x) + (Y_1,\dots,Y_k), \quad Y_i \sim \mathrm{Lap}\!\left(\frac{\Delta f}{\varepsilon}\right) \]</div>
+      <p class="small dim">Add one draw per output coordinate, scaled by sensitivity over \(\varepsilon\). <b>Theorem:</b> this is \(\varepsilon\)-differentially private, for any \(f\) returning real numbers.</p>
+    </div>
+  </div>
+  <div class="takeaway"><b>Everything below is now mechanical except one number.</b> The mechanism is fixed and the theorem is proved; questions 3, 4 and 7 differ only in what \(\Delta f\) turns out to be — and question 7 in whether it exists at all.</div>
+  <aside class="notes">
+    Point at the two places b appears: the scale is Δf/ε, so noise grows with sensitivity and shrinks with ε. The "strictly positive everywhere" line is the one to stress — it is exactly what question 6 shows a sampling mechanism lacks, and it is why bounded noise (like week 3's η ∈ {−1,0,1}) cannot give a DP guarantee however you tune it.
+  </aside>
+</section>
+
+
+<section data-part="3">
+  <h3>Sensitivity is a worst case, not an average</h3>
+  <div class="eq math">
+    \[ \Delta f \;=\; \max_{\text{neighbours } D_1, D_2} \; \| f(D_1) - f(D_2) \|_1
+       \qquad\qquad M(D) = f(D) + Y, \quad Y \sim \mathrm{Lap}\!\left(\tfrac{\Delta f}{\varepsilon}\right) \]
+  </div>
+  <div class="grid3 small" style="margin-top:.7em">
+    <div class="card"><h4>Q3 · SUM OVER \([l, h]\)</h4>Adding or removing one record moves the sum by at most \(h\).<br><span class="status good">\(\Delta f = h\), \(b = h/\varepsilon\)</span></div>
+    <div class="card"><h4>Q3 · AVERAGE OVER \([l, h]\)</h4>The same change, divided by \(n\).<br><span class="status good">\(\Delta f = h/n\), \(b = h/(n\varepsilon)\)</span></div>
+    <div class="card"><h4>Q4 · ONE WIDER VALUE</h4>\(v_1 \in [l, 2h]\) while the rest stay in \([l,h]\).<br><span class="status bad">\(\Delta f = 2h\) — everyone pays</span></div>
+  </div>
+  <div class="assumption"><b>Say the assumption out loud:</b> these answers take \(0 \le l < h\), so the largest change a single record can make is \(h\). If \(l\) were negative the sensitivity would be \(\max(|l|, h)\) instead. The worksheet works in the non-negative case.</div>
+  <aside class="notes">
+    The lecture derives Δf = 1 for a count and Δf ≤ 1/n for a mean of a 0/1 attribute (slides 15–17); these questions are the same argument with a general range. Question 4 is the one that catches people: the maximum is over neighbouring pairs, so the pair that removes v₁ sets the sensitivity for the whole release, even though only one record could ever be that large. Do the assumption note explicitly — it is a fair question from a sharp student and the answer sheet is silent on it.
+  </aside>
+</section>
+
+<section class="lab" data-part="3">
+  <h3>Lab 6 · Questions 3 and 4 — calibrate the mechanism</h3>
+  <p class="lab-brief">The blue curve is the answer's distribution on \(D\); the dashed curve is the neighbour \(D'\). \(\Delta f\) is exactly how far apart they sit.</p>
+  <div class="demo" data-demo="sensitivity"></div>
+  <aside class="notes">
+    Start on <b>sum</b> and slide n from 5 to 200: the noise does not move, because a sum's sensitivity does not depend on n. Switch to <b>average</b> and repeat — now the noise collapses. That contrast is the whole of question 3. Then flip to the Q4 setting and watch both the sensitivity and the gap between the two curves double while nothing else changes. Ask the class what fraction of the dataset caused that: one record in n.
+  </aside>
+</section>
+
+<section data-part="3">
+  <h3>Concept check · one wide value</h3>
+  <div class="demo" data-demo="sensitivityCheck"></div>
+  <aside class="notes">Expect the averaging answer to be popular. The correction is that sensitivity has no n in it for a sum — the definition maximises over pairs and never divides by anything.</aside>
+</section>
+
+<section data-part="3">
+  <div class="eyebrow">QUESTION 7 · AN UNBOUNDED DOMAIN</div>
+  <h3>Income starts at 0 and has no upper bound. Now what?</h3>
+  <div class="grid2">
+    <div class="card small">
+      <h4>WHY LAPLACE CANNOT BE APPLIED AS IT STANDS</h4>
+      <p class="small dim">The mechanism needs \(\Delta f\), and \(\Delta f\) is a maximum over what one record can contribute. With no upper bound that maximum is infinite, so the scale \(\Delta f / \varepsilon\) is undefined. There is nothing to calibrate to.</p>
+    </div>
+    <div class="card small">
+      <h4>THE FIX, AND WHY IT IS FREE TO PUBLISH</h4>
+      <p class="small dim">Choose a bound \(C\) in advance, clip every value to \([0, C]\), then compute. Now \(\Delta f = C/n\) for the mean.</p>
+      <p class="small dim">\(C\) is a parameter of the <em>mechanism</em>, not a function of the data, so announcing it leaks nothing — and lecture 5's second requirement says the adversary is assumed to know it anyway.</p>
+    </div>
+  </div>
+  <div class="takeaway"><b>What clipping costs:</b> a downward bias on everyone above \(C\). Choose \(C\) too high and the noise swamps the answer; too low and the bias does. And bias, unlike noise, does not shrink as \(n\) grows.</div>
+  <aside class="notes">
+    The answer sheet gives the fix in one sentence; the lab prices it. Emphasise that C must not be chosen by looking at the data — picking C as the observed maximum is a data-dependent choice and leaks the maximum, which is exactly the statistic most likely to identify someone. If students ask how to choose C legitimately: from public knowledge, from a prior release's budget, or by spending a little ε on a private quantile estimate.
+  </aside>
+</section>
+
+<section class="lab" data-part="3">
+  <h3>Lab 7 · Price the clipping bound</h3>
+  <p class="lab-brief">500 synthetic incomes with a long tail. Move \(C\) and watch bias and noise trade against each other.</p>
+  <div class="demo" data-demo="clipping"></div>
+  <aside class="notes">
+    Press <b>Refuse to clip</b> first so the class sees the failure mode the worksheet is describing: sensitivity set by the single richest person, noise far larger than the answer. Then walk C down and find the minimum. Two things to name: the total-error curve is U-shaped, so there is a genuine optimum; and the left branch is more dangerous than the right, because a biased answer still looks precise. Finish by dropping ε and watching the optimum move right — less privacy budget means you can afford to keep more of the tail.
+  </aside>
+</section>
+
+<!-- ============================================================ PART 4 -->
+<section class="divider" data-part="4">
+  <div class="num">4</div>
+  <h2>The budget you spend</h2>
+  <p>One release is a calculation. Many releases is an accounting problem.</p>
+  <div class="divider-questions">Worksheet questions 8 &amp; 9 · Lecture 6</div>
+  <aside class="notes">Part 4 closes both the week and the two-week arc: composition is the property week 3's mechanisms lacked, and membership inference is the attack week 3 built.</aside>
+</section>
+
+<section data-part="4">
+  <div class="eyebrow">60-second recap · lecture 6</div>
+  <h3>The two properties that make \(\varepsilon\) an accounting unit</h3>
+  <div class="grid2">
+    <div class="card">
+      <h4>SEQUENTIAL COMPOSITION · QUESTION 9</h4>
+      <div class="eq math small">\[ M(D) = \big(M_1(D), M_2(D)\big) \text{ is } (\varepsilon_1 + \varepsilon_2)\text{-DP} \]</div>
+      <p class="small dim">Privacy degrades gracefully and, crucially, <em>predictably</em>. Costs add, so a curator can set a budget in advance and subtract from it per query.</p>
+      <p class="tiny faint">Proof: multiply the two per-mechanism bounds on the joint density. Dwork &amp; Roth, Theorem 3.14.</p>
+    </div>
+    <div class="card">
+      <h4>POST-PROCESSING</h4>
+      <div class="eq math small">\[ f \circ M \text{ is } \varepsilon\text{-DP for any } f \text{ independent of } D \]</div>
+      <p class="small dim">Thinking about a DP output cannot make it less private — regardless of the attacker's strategy or computational power. This is what lets data users do whatever they like with a release.</p>
+    </div>
+  </div>
+  <div class="takeaway"><b>Compare with week 3.</b> Suppression had no composition rule, so three safe answers combined into a name. Here the rule exists, it is additive, and when the budget is spent the curator must stop answering.</div>
+  <aside class="notes">
+    Question 9 is marked optional and the answer sheet points at Dwork and Roth's Theorem 3.14; sketch it rather than proving it. The idea in one line: for a fixed output pair, the joint density ratio factorises into the two per-mechanism ratios, each bounded by its own e^εᵢ, and the product is e^(ε₁+ε₂). Note also that this is the loose bound — advanced composition gives roughly √k·ε for k queries under (ε, δ)-DP, which is beyond this subject but worth naming.
+  </aside>
+</section>
+
+<section class="lab" data-part="4">
+  <h3>Lab 8 · Spend the budget, and watch week 3's attack die</h3>
+  <p class="lab-brief">Fixed total \(\varepsilon\), split across \(k\) queries. Switch to “the same query \(k\) times” for the comparison that matters.</p>
+  <div class="demo" data-demo="budget"></div>
+  <aside class="notes">
+    Set the strategy to <b>the same query k times</b> and raise k. In week 3's lab 2, repeating a noisy query drove the error down as 1/√k and the attack succeeded. Here each repetition must be paid for out of a fixed budget, so each answer carries k times the noise and averaging only removes √k of it — the net error <i>rises</i> like √k. Say the conclusion plainly: differential privacy is the first mechanism this term that does not get weaker the more you ask it. That is composition doing the work, not the noise distribution.
+  </aside>
+</section>
+
+<section data-part="4">
+  <div class="eyebrow">QUESTION 8 · DOES DP TRAINING STOP THE WEEK 3 ATTACK?</div>
+  <h3>Treat the model as the output of a mechanism</h3>
+  <div class="grid2">
+    <div class="card small">
+      <h4>THE ARGUMENT</h4>
+      <p class="small dim">If training is \(\varepsilon\)-DP with the usual neighbouring definition — two datasets differing in one record — then the trained model is a DP release. An adversary cannot tell which of two neighbouring training sets produced it, and “was this record in the training set?” is precisely that question.</p>
+      <p class="small dim">Post-processing does the rest: querying the model is a function of its parameters, so no attack on it can beat the bound.</p>
+    </div>
+    <div class="card small">
+      <h4>THE BOUND, AND ITS SMALL PRINT</h4>
+      <div class="eq math small">\[ \text{membership advantage} \;\le\; e^{\varepsilon} - 1 \]</div>
+      <p class="small dim">Yeom et al., CSF 2018 — the reference the answer sheet gives. Note the range: advantage is at most 1 by definition, so the bound says nothing once \(\varepsilon \ge \ln 2 \approx 0.69\).</p>
+    </div>
+  </div>
+  <div class="takeaway"><b>So the honest answer is two-part:</b> yes, DP provably bounds membership inference — and at the \(\varepsilon\) values people actually deploy, that particular theorem is vacuous. DP-SGD does defeat these attacks in practice, but that is an empirical finding, not this inequality.</div>
+  <aside class="notes">
+    The worksheet's answer is correct and worth reading aloud, including its caveat that the neighbourhood definition matters. Push one step further than the answer does: have the class compute e^ε − 1 at ε = 1. It is 1.72, which is no constraint at all on a quantity that cannot exceed 1. The gap between the provable bound and the observed robustness of DP-SGD is real and active research — Jayaraman and Evans 2019 and Nasr et al. 2021, both cited on lecture 6 slide 38, are exactly about this gap.
+  </aside>
+</section>
+
+<section class="lab" data-part="4">
+  <h3>Lab 9 · Where the guarantee actually bites</h3>
+  <p class="lab-brief">The green curve is the bound. The dashed line is week 3's lab 5: 73% attack accuracy at the best threshold, i.e. advantage 2(0.73) − 1 = 0.46.</p>
+  <div class="demo" data-demo="dpMembership"></div>
+  <aside class="notes">
+    Press <b>halve week 3</b>: to cut the attack's advantage to half of its undefended level you need ε = ln(1.23) ≈ 0.21, and merely to beat it at all you need ε below ln(1.46) ≈ 0.38 — both far stricter than any deployed system uses. Then move to ε = 1 and note that the theorem has stopped constraining anything. The teaching point is about how to read a bound, not about DP being weak: a guarantee that is vacuous in the regime you deploy in is not evidence of safety, and you need the empirical result as well.
+  </aside>
+</section>
+
+<section data-part="4">
+  <h3>Concept check · what the guarantee does <em>not</em> say</h3>
+  <div class="demo" data-demo="dpScopeCheck"></div>
+  <aside class="notes">Lecture 6's closing slide: DP does not create privacy where none existed, does not protect you from true population-level findings, and does not replace the policy question of whether the analysis should run at all.</aside>
+</section>
+
+<!-- ============================================================ -->
+<section>
+  <h3>The nine questions in one map</h3>
+  <table class="tbl small synthesis-table">
+    <tr><th>Q</th><th>What is asked</th><th>The move</th><th>The lesson</th></tr>
+    <tr><td>1</td><td>make the table 3-anonymous</td><td>Incognito: bottom-up, prune by subset and rollup</td><td>income fails alone, so half the lattice never exists</td></tr>
+    <tr><td>2</td><td>\(p\) for \(\varepsilon = \ln 7\)</td><td>\(\tfrac{1+p}{1-p} = 7 \Rightarrow p = \tfrac34\)</td><td>more truth is a weaker guarantee, not a stronger one</td></tr>
+    <tr><td>3</td><td>Laplace for a sum, then a mean</td><td>\(\Delta f = h\), then \(h/n\)</td><td>means tolerate DP; sums do not improve with \(n\)</td></tr>
+    <tr><td>4</td><td>one value in \([l, 2h]\)</td><td>\(\Delta f = 2h\)</td><td>a worst case over pairs, so everyone pays for one record</td></tr>
+    <tr><td>5</td><td>why \(\varepsilon = 50\) is weak</td><td>\(e^{50} \approx 5\times10^{21}\)</td><td>the inequality holds and forbids nothing</td></tr>
+    <tr><td>6</td><td>random record is not DP</td><td>exhibit \(O = \{d\}\): \(\tfrac{1}{|D|} \le e^\varepsilon \cdot 0\)</td><td>differing support kills every finite \(\varepsilon\)</td></tr>
+    <tr><td>7</td><td>unbounded income</td><td>clip at a public \(C\), then \(\Delta f = C/n\)</td><td>bias versus noise, and bias does not shrink with \(n\)</td></tr>
+    <tr><td>8</td><td>does DP stop membership attacks</td><td>yes, advantage \(\le e^{\varepsilon}-1\)</td><td>true, and vacuous above \(\varepsilon = \ln 2\)</td></tr>
+    <tr><td>9</td><td>composition</td><td>\(\varepsilon_1 + \varepsilon_2\)</td><td>the property every week 3 mechanism lacked</td></tr>
+  </table>
+  <aside class="notes">Use this as the verbal recap. For each row ask what would change if the assumption in the third column were dropped.</aside>
+</section>
+
+<section>
+  <h3>Take-home principles</h3>
+  <div class="grid2 small">
+    <div class="card">
+      <h4>WHEN YOU READ A PRIVACY CLAIM</h4>
+      <ul>
+        <li>Ask what the guarantee quantifies over — which pairs, which outputs.</li>
+        <li>Convert \(\varepsilon\) into a belief shift before deciding it is small.</li>
+        <li>Check whether the bound is binding in the regime actually deployed.</li>
+        <li>A satisfied inequality that forbids nothing is not a guarantee.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4>WHEN YOU BUILD A MECHANISM</h4>
+      <ul>
+        <li>Derive \(\Delta f\) as a maximum over neighbours, never an average.</li>
+        <li>Bound the domain before you need to, and publish the bound.</li>
+        <li>Budget across the whole sequence of releases, not per query.</li>
+        <li>Never let a mechanism parameter depend on the data it protects.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="takeaway"><b>Where this goes next:</b> \((\varepsilon, \delta)\)-DP, the Gaussian mechanism and DP-SGD — the same accounting, applied once per gradient step instead of once per query.</div>
+  <aside class="notes">Point forward without teaching it: lecture 6's final slides name (ε, δ)-DP, the Gaussian mechanism, DP-SGD and group privacy as the continuation, along with federated learning, MPC and homomorphic encryption as the confidentiality story that runs alongside.</aside>
+</section>
+
+<section>
+  <h3>Sources</h3>
+  <ul class="small reference-list">
+    <li><b>COMP90073 Lecture 4</b> — K-Anonymity: generalisation, the subset property, Basic Incognito.</li>
+    <li><b>COMP90073 Lecture 5</b> — Differential Privacy: definition and properties (intuition).</li>
+    <li><b>COMP90073 Lecture 6</b> — Differential Privacy: mathematical definition and mechanisms.</li>
+    <li><b>Workshop Week 4</b> — questions 1–9.</li>
+    <li>LeFevre, DeWitt &amp; Ramakrishnan (SIGMOD 2005) · Meyerson &amp; Williams (PODS 2004) · Dwork, McSherry, Nissim &amp; Smith (TCC 2006) · Dwork &amp; Naor (2010) · Warner (JASA 1965) · Dwork &amp; Roth (2014), Theorem 3.14 · Yeom, Giacomelli, Fredrikson &amp; Jha (CSF 2018) · Abadi et al. (CCS 2016).</li>
+  </ul>
+  <div class="takeaway"><b>Note:</b> every number on these slides is computed in your browser — the Incognito run counts real equivalence classes in the worksheet's twelve rows, and all other data is synthetic. Nothing is collected.</div>
+  <aside class="notes">The lecture PDFs carry the full bibliographies; this credits the work most directly represented in the labs.</aside>
+</section>
+
+<section class="title-slide">
+  <div class="kicker">End of Workshop Week 4</div>
+  <h1 style="font-size:1.5em">You have a guarantee that composes.<br>What did you have to give up to get it?</h1>
+  <div class="title-rule"></div>
+  <p class="sub small">Press <span class="mono">O</span> to revisit any lab · <span class="mono">S</span> for facilitator notes</p>
+  <aside class="notes">The intended answers: exact answers, unlimited queries, and any promise about what the population-level result reveals. Ask which of the three students would actually miss.</aside>
+</section>
+
+</div>
+</div>
+
+<script src="reveal/dist/reveal.js"></script>
+<script src="reveal/plugin/notes/notes.js"></script>
+<script src="reveal/plugin/highlight/highlight.js"></script>
+<script src="js/demos.js"></script>
+<script>
+  const PARTS = ['the table', 'the definition', 'the noise', 'the budget'];
+
+  /* A small rail in the corner so students always know which of the four
+     obligations they are looking at. */
+  function addPartRails() {
+    document.querySelectorAll('.slides > section[data-part]').forEach(section => {
+      if (section.querySelector('.part-rail')) return;
+      const active = section.dataset.part;
+      const rail = document.createElement('div');
+      rail.className = 'part-rail';
+      rail.setAttribute('aria-hidden', 'true');
+      PARTS.forEach((name, index) => {
+        const chip = document.createElement('span');
+        chip.textContent = name;
+        if (String(index + 1) === active) chip.className = 'on';
+        rail.append(chip);
+      });
+      section.prepend(rail);
+    });
+  }
+
+  Reveal.initialize({
+    width: 1280,
+    height: 720,
+    margin: 0.055,
+    center: false,
+    display: 'flex',
+    minScale: 0.2,
+    maxScale: 1.6,
+    hash: true,
+    slideNumber: 'c/t',
+    transition: 'fade',
+    transitionSpeed: 'fast',
+    backgroundTransition: 'none',
+    plugins: [RevealNotes, RevealHighlight]
+  }).then(() => {
+    addPartRails();
+
+    /* Passing no scope typesets the whole deck. The static slide maths is done
+       once up front so overview mode and PDF export never show raw TeX on a
+       slide nobody has visited; the per-slide call then only has to catch demo
+       content, which mounts lazily. */
+    const typeset = scope => {
+      if (!window.MathJax || !MathJax.typesetPromise) return;
+      MathJax.typesetPromise(scope)
+        .then(() => Reveal.layout())
+        .catch(() => {});
+    };
+    const refresh = () => {
+      Demos.mountVisible();
+      const slide = Reveal.getCurrentSlide();
+      typeset(slide ? [slide] : undefined);
+    };
+    refresh();
+    Reveal.on('slidechanged', refresh);
+    /* Overview and print both need every demo present, not just the
+       visible one. */
+    Reveal.on('overviewshown', () => { Demos.mountAll(); typeset(); });
+    if (window.MathJax && MathJax.startup) {
+      MathJax.startup.promise.then(() => { typeset(); refresh(); });
+    }
+  });
+</script>
+</body>
+</html>
