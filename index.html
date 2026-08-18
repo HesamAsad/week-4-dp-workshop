@@ -79,7 +79,7 @@
 <section>
   <h2>We will solve the worksheet in order</h2>
   <div class="question-route">
-    <div><span>Q1</span><b>Incognito</b><small>build a 3-anonymous table</small></div>
+    <div><span>Q1</span><b>Incognito</b><small>protect the supplied quasi-identifiers</small></div>
     <div><span>Q2</span><b>Randomised response</b><small>solve for \(p\)</small></div>
     <div><span>Q3</span><b>Sum and average</b><small>calibrate Laplace noise</small></div>
     <div><span>Q4</span><b>One wider value</b><small>recompute sensitivity</small></div>
@@ -134,7 +134,7 @@
 <section id="question-1-start" class="divider" data-part="1">
   <div class="num">1</div>
   <h2>The table you generalise</h2>
-  <p>Finding a 3-anonymous table is a search problem. Incognito's job is to avoid searching.</p>
+  <p>Finding a 3-anonymous table with respect to postcode, age and income is a search problem. Incognito's job is to avoid searching.</p>
   <div class="divider-questions">Worksheet question 1 · Lecture 4</div>
   <aside class="notes">Set up: we are given a 12-row table, three domain generalisation hierarchies, and a target of k = 3. The naive approach scans every combination of generalisation levels. Incognito uses two structural facts to skip most of them.</aside>
 </section>
@@ -176,9 +176,9 @@
       <div><b>class size 3</b><span>same quasi-identifiers</span></div>
     </div>
   </div>
-  <div class="two-line-goal"><span>3-anonymous?</span><b>Yes: every equivalence class has at least 3 rows.</b><span>Attribute-private?</span><b>Not necessarily: the second class reveals “Yes” in the Loan column.</b></div>
+  <div class="two-line-goal"><span>3-anonymous w.r.t. postcode + age?</span><b>Yes: every postcode–age pattern appears in at least 3 rows.</b><span>Attribute-private?</span><b>Not necessarily: the second class reveals “Yes” in the Loan column.</b></div>
   <aside class="notes">
-    Pause on the second class. It protects row identity but not the loan value. This is Week 3's homogeneity limitation, and it prevents students from treating k-anonymity as a general privacy guarantee. Question 1 only asks for the group-size condition.
+    Name the roles before asking the question: postcode and age are the quasi-identifiers on this slide; Loan is the sensitive attribute. Pause on the second class. It protects row identity with respect to that QI set but not the loan value. This is Week 3's homogeneity limitation, and it prevents students from treating k-anonymity as a general privacy guarantee.
   </aside>
 </section>
 
@@ -219,7 +219,7 @@
 
 <section class="lab" data-part="1">
   <h3>Question 1 lab B · Compare the two minimal releases</h3>
-  <p class="lab-brief">Two incomparable answers. Both are 3-anonymous; they are not equally useful, and neither protects the sensitive column.</p>
+  <p class="lab-brief">Two incomparable answers. Both are 3-anonymous over the released postcode–age–income patterns; neither protects the sensitive column.</p>
   <div class="demo" data-demo="releasedTable"></div>
   <aside class="notes">
     Start on ⟨P0,A2,I1⟩ — postcodes survive at their finest useful level, but age and income are gone entirely. Then switch to ⟨P2,A0,I1⟩ — now age survives and location is gone. Ask which release a bank would prefer, and make the point that "minimal" is a partial order, not a ranking: Incognito returns a set of incomparable answers and someone still has to choose. Then look at the loan column: some classes are homogeneous, so week 3's attack works on this table too. That is the bridge to part 2.
@@ -231,7 +231,7 @@
   <div class="grid3 small">
     <div class="card"><h4>IT PROTECTS IDENTITY, NOT ATTRIBUTES</h4>A class of \(k\) records that all took the loan tells you the answer without telling you the row. Week 3's homogeneity attack, still working.</div>
     <div class="card"><h4>IT DEPENDS ON NAMING THE QUASI-IDENTIFIERS</h4>Which columns are “identifying” depends on what external data exists — today and in five years. The guarantee is only as good as that guess.</div>
-    <div class="card"><h4>IT DOES NOT COMPOSE</h4>Two independently 3-anonymous releases of the same people can be intersected. Nothing in the definition bounds what happens next.</div>
+    <div class="card"><h4>IT DOES NOT COMPOSE</h4>Two releases can each be 3-anonymous with respect to their chosen quasi-identifiers and still be intersected. Nothing in the definition bounds what happens next.</div>
   </div>
   <div class="takeaway"><b>So change the object being protected.</b> Not “which row is you”, but “whether you are here at all” — a property of the <em>mechanism</em>, which composes, needs no quasi-identifier list, and holds against any auxiliary knowledge.</div>
   <aside class="notes">
