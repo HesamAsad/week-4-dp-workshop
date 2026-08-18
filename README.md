@@ -12,7 +12,7 @@ For a 55-minute class, shorten or skip an interactive exploration rather than ju
 
 | Question | Core task | Interactive check |
 |---|---|---|
-| 1 | apply Incognito to obtain a 3-anonymous table | run the lattice and compare the two minimal releases |
+| 1 | apply Incognito to obtain a table that is 3-anonymous with respect to the supplied quasi-identifiers | run the lattice and compare the two minimal releases |
 | 2 | solve randomised response for `p` when `ε = ln 7` | turn the privacy dial |
 | 3 | calibrate Laplace noise for a sum and an average | compare sensitivities and distributions |
 | 4 | recompute sensitivity when one value can reach `2h` | one-wide-value concept check |

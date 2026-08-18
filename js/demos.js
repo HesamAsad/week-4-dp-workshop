@@ -591,7 +591,7 @@
 
       badge.className = `k-badge ${minK >= 3 ? 'pass' : 'fail'}`;
       badge.innerHTML = minK >= 3
-        ? `${minK}-anonymous — satisfies the worksheet's ${inlineMath('k=3')}`
+        ? `${minK}-anonymous over the released QIs — satisfies ${inlineMath('k=3')}`
         : `Not 3-anonymous — one class holds only ${minK} record${minK === 1 ? '' : 's'}`;
       queueTypeset(badge);
 
@@ -612,9 +612,9 @@
       if (minK < 3) {
         setVerdict(verdict, 'bad', `Not released. Incognito would have rejected this node — ${minK === 1 ? 'a class of one is a re-identification' : 'a class this small is below the threshold'}.`);
       } else if (diversity === 1) {
-        setVerdict(verdict, 'warn', `3-anonymity holds, and yet a whole class shares one loan outcome — identity is hidden, the answer is not. That gap is what week 3's homogeneity attack exploited, and it is exactly why differential privacy changes the question from "who is this row?" to "would the output change if this person left?".`);
+        setVerdict(verdict, 'warn', `3-anonymity holds over the released QIs, and yet a whole class shares one loan outcome — identity is hidden, the answer is not. That gap is what week 3's homogeneity attack exploited, and it is exactly why differential privacy changes the question from "who is this row?" to "would the output change if this person left?".`);
       } else {
-        setVerdict(verdict, 'ok', `3-anonymity holds with ${loss * 100 < 1 ? 'no' : `${(loss * 100).toFixed(0)}%`} average information loss. Note what had to go: one whole quasi-identifier is suppressed, and income was suppressed before the search even reached two dimensions.`);
+        setVerdict(verdict, 'ok', `3-anonymity holds over the released QIs with ${loss * 100 < 1 ? 'no' : `${(loss * 100).toFixed(0)}%`} average information loss. Note what had to go: one whole quasi-identifier is suppressed, and income was suppressed before the search even reached two dimensions.`);
       }
     }
 
