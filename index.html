@@ -151,7 +151,7 @@
     <div class="story-equals">≈</div>
     <div class="story-world"><b>Alice stays home</b><span>the study reports the same population-level finding</span></div>
   </div>
-  <div class="takeaway"><b>The achievable promise:</b> whatever is learned should have been about as likely whether Alice joined or not. DP limits the <em>harm caused by participation</em>; it does not hide true facts about the population.</div>
+  <div class="takeaway"><b>The simple promise:</b> the public result should look almost the same with or without Alice's row. Seeing the result reveals very little about whether she took part. Population-wide facts can still be learned.</div>
   <aside class="notes">
     Lecture 5 uses the smoking and Cate Blanchett examples to show why "nothing new may be learned" is impossible for useful statistics. Do not introduce the formula yet. First make the two possible worlds concrete: Alice present and Alice absent. Part 2 will turn "about as likely" into an inequality.
   </aside>
@@ -260,8 +260,43 @@
 </section>
 
 <section class="lab" data-part="1">
-  <h3>Question 1 lab A · Run Incognito on the worksheet's table</h3>
-  <p class="lab-brief">Step through the real algorithm. Every displayed class size is counted from the 12 rows; nothing is pre-computed.</p>
+  <h3>Question 1 lab A · Start with the worksheet's original table</h3>
+  <p class="lab-brief">These are the exact 12 rows supplied in Question 1. The first three columns are the quasi-identifiers to generalise.</p>
+  <div class="original-table-layout">
+    <div class="table-wrap original-table-wrap">
+      <table class="data-table original-data-table">
+        <thead><tr><th>#</th><th class="qi-heading">Postal code</th><th class="qi-heading">Age</th><th class="qi-heading">Income (K)</th><th class="sensitive-heading">Loan taken</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>3000</td><td>29</td><td>100</td><td>Y</td></tr>
+          <tr><td>2</td><td>3100</td><td>39</td><td>70</td><td>N</td></tr>
+          <tr><td>3</td><td>3022</td><td>22</td><td>60</td><td>Y</td></tr>
+          <tr><td>4</td><td>3001</td><td>46</td><td>80</td><td>Y</td></tr>
+          <tr><td>5</td><td>3140</td><td>41</td><td>110</td><td>Y</td></tr>
+          <tr><td>6</td><td>3101</td><td>27</td><td>40</td><td>N</td></tr>
+          <tr><td>7</td><td>3200</td><td>25</td><td>55</td><td>Y</td></tr>
+          <tr><td>8</td><td>3516</td><td>33</td><td>80</td><td>N</td></tr>
+          <tr><td>9</td><td>3097</td><td>40</td><td>30</td><td>Y</td></tr>
+          <tr><td>10</td><td>3482</td><td>52</td><td>50</td><td>N</td></tr>
+          <tr><td>11</td><td>3561</td><td>41</td><td>55</td><td>Y</td></tr>
+          <tr><td>12</td><td>3000</td><td>25</td><td>45</td><td>Y</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="original-table-key">
+      <div><span>\(Q\)</span><b>Postcode · age · income</b><small>Generalise these values until every released pattern has at least 3 rows.</small></div>
+      <div><span>SECRET</span><b>Loan taken</b><small>Keep this useful column, but remember that k-anonymity does not protect it from homogeneity.</small></div>
+      <div><span>START</span><b>Exact rows are not the release</b><small>Incognito tests the supplied generalisation levels before choosing a safe table.</small></div>
+    </div>
+  </div>
+  <div class="takeaway"><b>Target:</b> after applying the supplied hierarchies, every postcode–age–income pattern must occur at least \(k=3\) times.</div>
+  <aside class="notes">
+    This is Question 1's source table verbatim. Identify the roles before running the algorithm: postcode, age and income are the declared quasi-identifiers; Loan Taken is the sensitive attribute. The exact rows are the private input, not the table we release. The next lab shows how each candidate generalisation partitions these same 12 rows into equivalence classes.
+  </aside>
+</section>
+
+<section class="lab" data-part="1">
+  <h3>Question 1 lab B · Run Incognito on those 12 rows</h3>
+  <p class="lab-brief">At every step, the right panel shows every current equivalence-class size and tests the smallest one against the chosen \(k\).</p>
   <div class="demo" data-demo="incognito"></div>
   <aside class="notes">
     Step through the 1-attribute phase by hand first — three scans settle postcode and age, and two settle income, with <span class="mono">I0</span> failing at a class of 2. Ask what that failure has just bought: every node containing income at level 0 is now dead, which is 9 of the 18 full-domain nodes. By the end the counter reads 13, not 9 — the extra four are the combinations whose postcode-and-age pair failed at two dimensions, pruned by the same subset property one level up. Then run to the end. Land on the two answers, ⟨P0,A2,I1⟩ and ⟨P2,A0,I1⟩ — the worksheet's own answer names exactly these, reached by the same reasoning. Finally push k to 4 and 5 and watch the surviving set shrink; at k = 5 the only survivors suppress nearly everything.
@@ -269,7 +304,7 @@
 </section>
 
 <section class="lab" data-part="1">
-  <h3>Question 1 lab B · Compare the two minimal releases</h3>
+  <h3>Question 1 lab C · Compare the two minimal releases</h3>
   <p class="lab-brief">Two incomparable answers. Both are 3-anonymous over the released postcode–age–income patterns; neither protects the sensitive column.</p>
   <div class="demo" data-demo="releasedTable"></div>
   <aside class="notes">
@@ -312,12 +347,13 @@
 </section>
 
 <section data-part="2">
-  <div class="eyebrow">Prerequisite · a mechanism is a distribution</div>
-  <h3>Use one output axis; compare probability in the same region</h3>
+  <div class="eyebrow">Prerequisite · what does \(M(\cdot)\) mean?</div>
+  <h3>\(M\) is the randomised algorithm; \(D\) is its input dataset</h3>
+  <div class="mechanism-definition"><b>\(M(D)\)</b><span>means “run algorithm \(M\) on dataset \(D\)”</span><i>→</i><strong>one random output</strong><small>Run it again with fresh randomness and the output may change.</small></div>
   <div class="distribution-comparison">
     <div class="distribution-legend" aria-hidden="true">
-      <span class="legend-d"><i></i>run \(M(D)\) many times</span>
-      <span class="legend-dp"><i></i>run \(M(D')\) many times</span>
+      <span class="legend-d"><i></i>rerun \(M\) with input \(D\)</span>
+      <span class="legend-dp"><i></i>rerun \(M\) with input \(D'\)</span>
       <small>schematic shapes</small>
     </div>
     <svg viewBox="0 0 1000 270" role="img" aria-label="Two overlapping output distributions for neighbouring datasets on one shared axis. A vertical band marks an output set O, and the area under each curve inside that band is its probability of O.">
@@ -341,7 +377,7 @@
     </div>
   </div>
   <div class="reveal-question"><span>DP requires the two shaded probabilities to stay within an \(e^\varepsilon\) factor</span><b>for every region \(O\)</b></div>
-  <aside class="notes">Students often read M(D) as one noisy number. Here each curve represents the distribution produced by fixing a dataset and rerunning the mechanism with fresh random coins. Height indicates relative likelihood; probability is area, so the definition compares the two shaded areas for every possible output region O. The drawn shapes are schematic, not an assumption that every mechanism is Gaussian. Stress the shared support: if one distribution assigns positive probability to a region that is impossible under the other, no finite multiplicative bound can hold.</aside>
+  <aside class="notes">Define the notation before discussing the curves. M is the algorithm or mechanism. D is the dataset supplied to it. M(D) means one execution of that algorithm on that dataset. Because M uses fresh randomness, repeating the same M(D) experiment can return different values; those values form the blue distribution. Replacing D with neighbouring D-prime produces the purple distribution. Height indicates relative likelihood; probability is area, so the definition compares the two shaded areas for every possible output region O. The shapes are schematic, not an assumption that every mechanism is Gaussian.</aside>
 </section>
 
 <section data-part="2">
