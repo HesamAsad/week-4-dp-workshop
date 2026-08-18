@@ -77,22 +77,24 @@
 </section>
 
 <section>
-  <h2>Nine questions follow one learning path</h2>
-  <div class="learning-path">
-    <div class="path-step"><span>1</span><b>Generalise</b><small>Q1 · find a valid table</small></div>
-    <div class="path-arrow">→</div>
-    <div class="path-step"><span>2</span><b>Guarantee</b><small>Q2, Q5, Q6 · read the definition</small></div>
-    <div class="path-arrow">→</div>
-    <div class="path-step"><span>3</span><b>Calibrate</b><small>Q3, Q4, Q7 · choose the noise</small></div>
-    <div class="path-arrow">→</div>
-    <div class="path-step"><span>4</span><b>Account</b><small>Q8, Q9 · spend the budget</small></div>
+  <h2>We will solve the worksheet in order</h2>
+  <div class="question-route">
+    <div><span>Q1</span><b>Incognito</b><small>build a 3-anonymous table</small></div>
+    <div><span>Q2</span><b>Randomised response</b><small>solve for \(p\)</small></div>
+    <div><span>Q3</span><b>Sum and average</b><small>calibrate Laplace noise</small></div>
+    <div><span>Q4</span><b>One wider value</b><small>recompute sensitivity</small></div>
+    <div><span>Q5</span><b>Large \(\varepsilon\)</b><small>interpret the guarantee</small></div>
+    <div><span>Q6</span><b>Random record</b><small>find a counterexample</small></div>
+    <div><span>Q7</span><b>Unbounded income</b><small>clip before averaging</small></div>
+    <div><span>Q8</span><b>Membership inference</b><small>use post-processing</small></div>
+    <div><span>Q9</span><b>Composition</b><small>add privacy costs</small></div>
   </div>
-  <div class="two-line-goal">
+  <div class="two-line-goal route-goal">
     <p><b>For every mechanism:</b> name the neighbouring datasets, the possible outputs, and the worst one-person change.</p>
     <p><b>For every guarantee:</b> ask what it forbids after all releases and all attacker knowledge are considered.</p>
   </div>
   <aside class="notes">
-    This replaces the four dense agenda cards with a cumulative learning path. For a 55-minute class, run Labs 1, 3, 6 and 8 live; treat the other labs as brief checks or self-guided extensions. That preserves coverage of all nine worksheet questions without trying to facilitate nine substantial interactions.
+    The order now matches the worksheet exactly. Each question begins with only the prerequisite needed for that question, then moves to its derivation, answer and optional lab. For a 55-minute class, shorten the interactive exploration rather than jumping ahead to a later question.
   </aside>
 </section>
 
@@ -114,7 +116,7 @@
   </aside>
 </section>
 
-<section>
+<section id="dp-pivot">
   <div class="eyebrow">THE PIVOT · LECTURE 5</div>
   <h3>Differential privacy protects the decision to participate</h3>
   <div class="participation-story">
@@ -129,7 +131,7 @@
 </section>
 
 <!-- ============================================================ PART 1 -->
-<section class="divider" data-part="1">
+<section id="question-1-start" class="divider" data-part="1">
   <div class="num">1</div>
   <h2>The table you generalise</h2>
   <p>Finding a 3-anonymous table is a search problem. Incognito's job is to avoid searching.</p>
@@ -207,7 +209,7 @@
 </section>
 
 <section class="lab" data-part="1">
-  <h3>Lab 1 · Run Incognito on the worksheet's table</h3>
+  <h3>Question 1 lab A · Run Incognito on the worksheet's table</h3>
   <p class="lab-brief">Step through the real algorithm. Every displayed class size is counted from the 12 rows; nothing is pre-computed.</p>
   <div class="demo" data-demo="incognito"></div>
   <aside class="notes">
@@ -216,7 +218,7 @@
 </section>
 
 <section class="lab" data-part="1">
-  <h3>Lab 2 · Compare the two minimal releases</h3>
+  <h3>Question 1 lab B · Compare the two minimal releases</h3>
   <p class="lab-brief">Two incomparable answers. Both are 3-anonymous; they are not equally useful, and neither protects the sensitive column.</p>
   <div class="demo" data-demo="releasedTable"></div>
   <aside class="notes">
@@ -224,7 +226,7 @@
   </aside>
 </section>
 
-<section data-part="1">
+<section id="question-1-end" data-part="1">
   <h3>Where this approach runs out</h3>
   <div class="grid3 small">
     <div class="card"><h4>IT PROTECTS IDENTITY, NOT ATTRIBUTES</h4>A class of \(k\) records that all took the loan tells you the answer without telling you the row. Week 3's homogeneity attack, still working.</div>
@@ -238,12 +240,12 @@
 </section>
 
 <!-- ============================================================ PART 2 -->
-<section class="divider" data-part="2">
+<section id="dp-foundations" class="divider" data-part="2">
   <div class="num">2</div>
   <h2>The guarantee you claim</h2>
   <p>One inequality, quantified over every neighbouring pair and every output. Both quantifiers do real work.</p>
-  <div class="divider-questions">Worksheet questions 2, 5 &amp; 6 · Lectures 5 and 6</div>
-  <aside class="notes">Part 2 is about reading the definition precisely enough to use it as a proof obligation — which is exactly what questions 5 and 6 ask for.</aside>
+  <div class="divider-questions">Question 2 first · Questions 5 and 6 reuse this definition</div>
+  <aside class="notes">Build the definition once, then stay in worksheet order: use it for randomised response in Question 2, sensitivity in Questions 3 and 4, interpretation in Question 5, and a counterexample in Question 6.</aside>
 </section>
 
 <section data-part="2">
@@ -330,8 +332,9 @@
   </aside>
 </section>
 
-<section class="lab" data-part="2">
-  <h3>Lab 3 · Question 5 — what does \(\varepsilon = 50\) actually forbid?</h3>
+<section id="question-5" class="lab" data-part="2">
+  <div class="eyebrow">QUESTION 5 · READING A LARGE PRIVACY COST</div>
+  <h3>Question 5 lab · What does \(\varepsilon = 50\) actually forbid?</h3>
   <p class="lab-brief">The inequality is satisfied at every \(\varepsilon\). The question is what it still rules out.</p>
   <div class="demo" data-demo="epsilonMeaning"></div>
   <aside class="notes">
@@ -339,7 +342,7 @@
   </aside>
 </section>
 
-<section data-part="2">
+<section id="question-6-start" data-part="2">
   <div class="eyebrow">QUESTION 6 · A PROOF OBLIGATION, BACKWARDS</div>
   <h3>“Draw a record at random and return it.” Show this is not \(\varepsilon\)-DP.</h3>
   <div class="grid2">
@@ -361,7 +364,7 @@
 </section>
 
 <section class="lab" data-part="2">
-  <h3>Lab 4 · Find the output that breaks it</h3>
+  <h3>Question 6 lab · Find the output that breaks it</h3>
   <p class="lab-brief">Pick which record the neighbouring dataset drops, then compare the two output distributions.</p>
   <div class="demo" data-demo="notDP"></div>
   <aside class="notes">
@@ -369,13 +372,13 @@
   </aside>
 </section>
 
-<section data-part="2">
+<section id="question-6-end" data-part="2">
   <h3>Concept check · what the guarantee does <em>not</em> say</h3>
   <div class="demo" data-demo="dpScopeCheck"></div>
   <aside class="notes">Use this immediately after the definition and counterexample. DP does not make true population facts disappear, does not protect a secret that was already public, and does not decide whether an analysis is ethical or useful.</aside>
 </section>
 
-<section data-part="2">
+<section id="question-2-start" data-part="2">
   <div class="eyebrow">Question 2 prerequisite · who sees the raw data?</div>
   <h3>Central and local DP move the randomisation point</h3>
   <div class="trust-pipelines">
@@ -408,8 +411,8 @@
   </aside>
 </section>
 
-<section class="lab" data-part="2">
-  <h3>Lab 5 · Turn the privacy dial and watch utility pay</h3>
+<section id="question-2-end" class="lab" data-part="2">
+  <h3>Question 2 lab · Turn the privacy dial and watch utility pay</h3>
   <p class="lab-brief">The estimator stays unbiased at every \(p\). Only its interval moves — that is the entire trade.</p>
   <div class="demo" data-demo="randomisedResponse"></div>
   <aside class="notes">
@@ -418,12 +421,12 @@
 </section>
 
 <!-- ============================================================ PART 3 -->
-<section class="divider" data-part="3">
+<section id="question-3-start" class="divider" data-part="3">
   <div class="num">3</div>
   <h2>The noise you calibrate</h2>
   <p>The mechanism is fixed. All the design work is in one number.</p>
-  <div class="divider-questions">Worksheet questions 3, 4 &amp; 7 · Lecture 6</div>
-  <aside class="notes">Parts 1 and 2 were about what to promise. Part 3 is the engineering: given the promise, how much noise, and how do you know?</aside>
+  <div class="divider-questions">Question 3 · sum and average queries</div>
+  <aside class="notes">Question 3 is the engineering step: given the privacy promise, calculate sensitivity and use it to set the Laplace scale. Question 4 will change one assumption only after this baseline is secure.</aside>
 </section>
 
 <section data-part="3">
@@ -462,35 +465,54 @@
 </section>
 
 <section data-part="3">
-  <div class="eyebrow">Questions 3 and 4 · worked calibration</div>
+  <div class="eyebrow">QUESTION 3 · WORKED CALIBRATION</div>
   <h3>Change one record, then divide only if the query does</h3>
-  <div class="grid3 small" style="margin-top:.7em">
+  <div class="grid2 small" style="margin-top:.7em">
     <div class="card"><h4>Q3 · SUM OVER \([l, h]\)</h4>Adding or removing one record moves the sum by at most \(h\).<br><span class="status good">\(\Delta f = h\), \(b = h/\varepsilon\)</span></div>
     <div class="card"><h4>Q3 · AVERAGE OVER \([l, h]\)</h4>The same change, divided by \(n\).<br><span class="status good">\(\Delta f = h/n\), \(b = h/(n\varepsilon)\)</span></div>
-    <div class="card"><h4>Q4 · ONE WIDER VALUE</h4>\(v_1 \in [l, 2h]\) while the rest stay in \([l,h]\).<br><span class="status bad">\(\Delta f = 2h\) — everyone pays</span></div>
   </div>
   <div class="assumption"><b>Worksheet assumption:</b> \(0 \le l < h\). If negative values were allowed, the largest absolute endpoint would matter.</div>
   <aside class="notes">
-    The lecture derives Δf = 1 for a count and Δf ≤ 1/n for a mean of a 0/1 attribute (slides 15–17); these questions are the same argument with a general range. Question 4 is the one that catches people: the maximum is over neighbouring pairs, so the pair that removes v₁ sets the sensitivity for the whole release, even though only one record could ever be that large. Do the assumption note explicitly — it is a fair question from a sharp student and the answer sheet is silent on it.
+    The lecture derives Δf = 1 for a count and Δf ≤ 1/n for a mean of a 0/1 attribute (slides 15–17); Question 3 is the same argument with a general range. Do the assumption note explicitly — it is a fair question from a sharp student and the answer sheet is silent on it.
   </aside>
 </section>
 
-<section class="lab" data-part="3">
-  <h3>Lab 6 · Calibrate a sum and an average</h3>
+<section id="question-3-end" class="lab" data-part="3">
+  <h3>Question 3 lab · Calibrate a sum and an average</h3>
   <p class="lab-brief">Switch the query and sample size; the curve centres stay \(\Delta f\) apart.</p>
   <div class="demo" data-demo="sensitivity"></div>
   <aside class="notes">
-    Start on <b>sum</b> and slide n from 5 to 200: the noise does not move, because a sum's sensitivity does not depend on n. Switch to <b>average</b> and repeat — now the noise collapses. That contrast is the whole of question 3. Then flip to the Q4 setting and watch both the sensitivity and the gap between the two curves double while nothing else changes. Ask the class what fraction of the dataset caused that: one record in n.
+    Start on <b>sum</b> and slide n from 5 to 200: the noise does not move, because a sum's sensitivity does not depend on n. Switch to <b>average</b> and repeat — now the noise collapses. Keep the “one wider value” toggle off until Question 4 so the baseline calculation lands first.
   </aside>
 </section>
 
-<section data-part="3">
+<section id="question-4-start" data-part="3">
+  <div class="eyebrow">QUESTION 4 · CHANGE ONE ASSUMPTION</div>
+  <h3>One wider value doubles the sum's sensitivity</h3>
+  <div class="grid2 small">
+    <div class="card">
+      <h4>QUESTION 3 BASELINE</h4>
+      <p class="dim">Every value lies in \([l,h]\), so one record contributes at most \(h\).</p>
+      <span class="status good">\(\Delta f=h\)</span>
+    </div>
+    <div class="card">
+      <h4>QUESTION 4 CHANGE</h4>
+      <p class="dim">Now \(v_1\in[l,2h]\). Removing that one allowed value can change the sum by \(2h\).</p>
+      <span class="status bad">\(\Delta f=2h\), so \(b=2h/\varepsilon\)</span>
+    </div>
+  </div>
+  <div class="takeaway"><b>Sensitivity follows the largest permitted contribution.</b> The maximum is over neighbouring pairs, so one exceptional range sets the noise scale for every release.</div>
+  <aside class="notes">Now return briefly to the Question 3 lab and switch on the Q4 setting: both the sensitivity and the gap between the curve centres double. Only one record in n caused the change, but the mechanism must protect every allowed neighbour.</aside>
+</section>
+
+<section id="question-4-end" data-part="3">
+  <div class="eyebrow">QUESTION 4 · CHECK THE CONSEQUENCE</div>
   <h3>Concept check · one wide value</h3>
   <div class="demo" data-demo="sensitivityCheck"></div>
   <aside class="notes">Expect the averaging answer to be popular. The correction is that sensitivity has no n in it for a sum — the definition maximises over pairs and never divides by anything.</aside>
 </section>
 
-<section data-part="3">
+<section id="question-7-start" data-part="3">
   <div class="eyebrow">QUESTION 7 · AN UNBOUNDED DOMAIN</div>
   <h3>Income starts at 0 and has no upper bound. Now what?</h3>
   <div class="grid2">
@@ -511,8 +533,8 @@
   </aside>
 </section>
 
-<section class="lab" data-part="3">
-  <h3>Lab 7 · Choose \(C\): too low biases, too high adds noise</h3>
+<section id="question-7-end" class="lab" data-part="3">
+  <h3>Question 7 lab · Choose \(C\): too low biases, too high adds noise</h3>
   <p class="lab-brief">Move the public clipping bound and find the lowest simulated RMSE.</p>
   <div class="demo" data-demo="clipping"></div>
   <aside class="notes">
@@ -521,16 +543,16 @@
 </section>
 
 <!-- ============================================================ PART 4 -->
-<section class="divider" data-part="4">
-  <div class="num">4</div>
+<section id="question-9-start" class="divider" data-part="4">
+  <div class="num">9</div>
   <h2>The budget you spend</h2>
   <p>One release is a calculation. Many releases is an accounting problem.</p>
-  <div class="divider-questions">Worksheet questions 8 &amp; 9 · Lecture 6</div>
-  <aside class="notes">Part 4 closes both the week and the two-week arc: composition is the property week 3's mechanisms lacked, and membership inference is the attack week 3 built.</aside>
+  <div class="divider-questions">Optional worksheet question 9 · composition</div>
+  <aside class="notes">Question 9 comes last, matching the worksheet. It closes the week by proving the property that week 3's release mechanisms lacked: privacy loss degrades predictably across a sequence.</aside>
 </section>
 
 <section data-part="4">
-  <div class="eyebrow">60-second recap · lecture 6</div>
+  <div class="eyebrow">QUESTION 9 · COMPOSITION</div>
   <h3>Composition turns repeated releases into a ledger</h3>
   <div class="budget-ledger">
     <div><span>Query 1</span><b>\(\varepsilon_1 = 0.2\)</b></div>
@@ -546,8 +568,8 @@
   </aside>
 </section>
 
-<section class="lab" data-part="4">
-  <h3>Lab 8 · Under one fixed budget, repetition stops helping</h3>
+<section id="question-9-end" class="lab" data-part="4">
+  <h3>Question 9 lab · Under one fixed budget, repetition stops helping</h3>
   <p class="lab-brief">Split the same total \(\varepsilon\) across repeated answers, then average them.</p>
   <div class="demo" data-demo="budget"></div>
   <aside class="notes">
@@ -555,7 +577,7 @@
   </aside>
 </section>
 
-<section data-part="4">
+<section id="question-8-start" data-part="4">
   <div class="eyebrow">Prerequisite for Question 8 · post-processing</div>
   <h3>Once the release is DP, later computation spends no new privacy</h3>
   <div class="postprocess-flow">
@@ -602,9 +624,9 @@
   </aside>
 </section>
 
-<section class="lab" data-part="4">
-  <div class="eyebrow">Optional extension</div>
-  <h3>Lab 9 · When is the membership bound numerically binding?</h3>
+<section id="question-8-end" class="lab" data-part="4">
+  <div class="eyebrow">QUESTION 8 · OPTIONAL NUMERICAL EXTENSION</div>
+  <h3>Question 8 lab · When is the membership bound numerically binding?</h3>
   <p class="lab-brief">The green curve is the bound. The dashed line is week 3's lab 5: 73% attack accuracy at the best threshold, i.e. advantage \(2(0.73)-1=0.46\).</p>
   <div class="demo" data-demo="dpMembership"></div>
   <aside class="notes">
@@ -615,18 +637,20 @@
 <!-- ============================================================ -->
 <section>
   <div class="eyebrow">Retrieval map · all nine questions</div>
-  <h3>Four moves organise the whole workshop</h3>
-  <div class="learning-path recap-map">
-    <div class="path-step"><span>1</span><b>Generalise</b><small>Q1 · group matching quasi-identifiers until every class reaches k.</small></div>
-    <div class="path-arrow">→</div>
-    <div class="path-step"><span>2</span><b>Guarantee</b><small>Q2, Q5, Q6 · compare all outputs on every neighbouring pair.</small></div>
-    <div class="path-arrow">→</div>
-    <div class="path-step"><span>3</span><b>Calibrate</b><small>Q3, Q4, Q7 · bound one person's influence, then set noise.</small></div>
-    <div class="path-arrow">→</div>
-    <div class="path-step"><span>4</span><b>Account</b><small>Q8, Q9 · use post-processing and add privacy costs.</small></div>
+  <h3>Nine answers, in worksheet order</h3>
+  <div class="question-route recap-route">
+    <div><span>Q1</span><b>Generalise</b><small>minimum class size \(3\)</small></div>
+    <div><span>Q2</span><b>Set \(p\)</b><small>\(p=3/4\)</small></div>
+    <div><span>Q3</span><b>Calibrate</b><small>\(h\) for sum, \(h/n\) for mean</small></div>
+    <div><span>Q4</span><b>Use \(2h\)</b><small>one wider value sets the maximum</small></div>
+    <div><span>Q5</span><b>Read \(e^{50}\)</b><small>the bound is extremely permissive</small></div>
+    <div><span>Q6</span><b>Find one \(O\)</b><small>positive probability versus zero</small></div>
+    <div><span>Q7</span><b>Clip first</b><small>publish \(C\), then add noise</small></div>
+    <div><span>Q8</span><b>Use DP training</b><small>membership attacks are post-processing</small></div>
+    <div><span>Q9</span><b>Add costs</b><small>\(\varepsilon_1+\varepsilon_2\)</small></div>
   </div>
-  <div class="takeaway"><b>Self-check:</b> for any question, name the neighbouring pair, the protected output or event, and the assumption that makes the bound finite.</div>
-  <aside class="notes">Ask students to place each worksheet question into one of the four moves before revealing the labels. The map intentionally matches the opening roadmap.</aside>
+  <div class="takeaway"><b>Self-check:</b> can you explain each answer before moving to the next question?</div>
+  <aside class="notes">Walk across the grid in numerical order. Ask for a one-sentence justification for each answer, not only the final formula.</aside>
 </section>
 
 <section>
@@ -671,26 +695,63 @@
 <script src="reveal/plugin/highlight/highlight.js"></script>
 <script src="js/demos.js"></script>
 <script>
-  const PARTS = ['the table', 'the definition', 'the noise', 'the budget'];
+  function sectionRange(startId, endId) {
+    const start = document.getElementById(startId);
+    const end = document.getElementById(endId);
+    const sections = [];
+    for (let node = start; node; node = node.nextElementSibling) {
+      sections.push(node);
+      if (node === end) break;
+    }
+    return sections;
+  }
 
-  /* A small rail in the corner so students always know which of the four
-     obligations they are looking at. */
-  function addPartRails() {
-    document.querySelectorAll('.slides > section[data-part]').forEach(section => {
+  function moveRangeBefore(startId, endId, beforeId) {
+    const fragment = document.createDocumentFragment();
+    sectionRange(startId, endId).forEach(section => fragment.append(section));
+    document.getElementById(beforeId).before(fragment);
+  }
+
+  function markQuestion(startId, endId, question) {
+    sectionRange(startId, endId).forEach(section => { section.dataset.question = question; });
+  }
+
+  /* The source stays grouped by reusable concepts, but the presented DOM must
+     follow the worksheet exactly: Q1, Q2, ... Q9. Prerequisites move with the
+     first question that needs them; later questions then reuse that knowledge. */
+  function arrangeQuestionSequence() {
+    document.getElementById('question-1-end').after(document.getElementById('dp-pivot'));
+    moveRangeBefore('question-2-start', 'question-2-end', 'question-5');
+    moveRangeBefore('question-3-start', 'question-4-end', 'question-5');
+    moveRangeBefore('question-8-start', 'question-8-end', 'question-9-start');
+
+    markQuestion('question-1-start', 'question-1-end', '1');
+    markQuestion('dp-pivot', 'question-2-end', '2');
+    markQuestion('question-3-start', 'question-3-end', '3');
+    markQuestion('question-4-start', 'question-4-end', '4');
+    markQuestion('question-5', 'question-5', '5');
+    markQuestion('question-6-start', 'question-6-end', '6');
+    markQuestion('question-7-start', 'question-7-end', '7');
+    markQuestion('question-8-start', 'question-8-end', '8');
+    markQuestion('question-9-start', 'question-9-end', '9');
+  }
+
+  /* A single question marker replaces the old concept tabs. */
+  function addQuestionRails() {
+    document.querySelectorAll('.slides > section[data-question]').forEach(section => {
       if (section.querySelector('.part-rail')) return;
-      const active = section.dataset.part;
       const rail = document.createElement('div');
       rail.className = 'part-rail';
       rail.setAttribute('aria-hidden', 'true');
-      PARTS.forEach((name, index) => {
-        const chip = document.createElement('span');
-        chip.textContent = name;
-        if (String(index + 1) === active) chip.className = 'on';
-        rail.append(chip);
-      });
+      const chip = document.createElement('span');
+      chip.className = 'on';
+      chip.textContent = `Question ${section.dataset.question} of 9`;
+      rail.append(chip);
       section.prepend(rail);
     });
   }
+
+  arrangeQuestionSequence();
 
   Reveal.initialize({
     width: 1280,
@@ -707,7 +768,7 @@
     backgroundTransition: 'none',
     plugins: [RevealNotes, RevealHighlight]
   }).then(() => {
-    addPartRails();
+    addQuestionRails();
 
     /* Passing no scope typesets the whole deck. The static slide maths is done
        once up front so overview mode and PDF export never show raw TeX on a
