@@ -257,6 +257,12 @@ em { color: var(--accent-2); font-style: normal; font-weight: 600; }
 svg text { font-family: var(--font); fill: var(--ink-dim); }
 .grid-line { stroke: rgba(113,132,155,.18); stroke-width: 1; }
 .axis-label { fill: var(--ink-faint); font-size: 12px; font-family: var(--mono); }
+.svg-html-label {
+  color: var(--ink-faint); font: 12px/18px var(--mono); white-space: nowrap;
+}
+.svg-html-label.center { text-align: center; }
+.svg-html-label.end { text-align: right; }
+.svg-html-label mjx-container { margin: 0 !important; color: inherit; }
 .faint-label { opacity: .65; }
 .empty-chart-label { fill: var(--ink-faint); font-size: 15px; font-family: var(--font); }
 .zone-label { fill: var(--accent-2); font-size: 12px; opacity: .8; }
@@ -328,6 +334,21 @@ svg text { font-family: var(--font); fill: var(--ink-dim); }
 .recall-step > div { display: flex; flex-direction: column; gap: .28em; }
 .recall-step > div > span { color: var(--ink-dim); font-size: .48em; line-height: 1.4; }
 .path-arrow, .role-arrow, .story-arrow, .prune-arrow, .ledger-plus { color: var(--accent); text-align: center; }
+.question-route {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: .42em;
+}
+.question-route > div {
+  display: grid; grid-template-columns: 2.2em 1fr; grid-template-rows: auto auto;
+  column-gap: .45em; padding: .42em .58em; border: 1px solid var(--line);
+  border-radius: 10px; background: var(--bg-soft); min-height: 2.55em;
+}
+.question-route span {
+  grid-row: 1 / 3; align-self: center; color: var(--accent);
+  font: 700 .55em var(--mono);
+}
+.question-route b { font-size: .58em; align-self: end; }
+.question-route small { color: var(--ink-dim); font-size: .42em; line-height: 1.3; }
+.recap-route { margin-top: .3em; }
 .two-line-goal {
   display: grid; grid-template-columns: auto 1fr; gap: .45em .8em; align-items: center;
   margin-top: .75em; padding: .65em .8em; border: 1px solid var(--line); border-radius: 12px;
@@ -335,6 +356,7 @@ svg text { font-family: var(--font); fill: var(--ink-dim); }
 }
 .two-line-goal span { color: var(--ink-faint); text-transform: uppercase; letter-spacing: .06em; }
 .two-line-goal p { margin: 0; font-size: 1em; }
+.two-line-goal.route-goal { grid-template-columns: 1fr 1fr; column-gap: 1.2em; }
 
 .participation-story,
 .neighbor-pair,
@@ -583,7 +605,7 @@ mjx-container[jax="SVG"][display="true"] { margin: .3em 0 !important; }
 .reveal .controls { color: var(--ink-faint); }
 .reveal .slide-number { background: transparent; color: var(--ink-faint); font-size: 14px; }
 
-/* Part rail: shows which of the three release mechanisms we are in. */
+/* Question rail: keeps the worksheet number visible on every worked slide. */
 .part-rail {
   position: absolute; top: 0; right: 0; display: flex; gap: .3em;
   font-size: .32em; color: var(--ink-faint); letter-spacing: .07em; text-transform: uppercase;

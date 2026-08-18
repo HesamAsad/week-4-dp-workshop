@@ -39,27 +39,67 @@
     return el;
   }
 
-  function button(label, onClick, className) {
-    return h('button', { class: `btn ${className || ''}`, type: 'button', onclick: onClick }, [label]);
+  /* SVG <text> cannot contain MathJax output. Formula-bearing chart labels
+     therefore use a small HTML island; MathJax replaces its TeX with SVG. */
+  function svgHtmlText(attrs, html, width = 220) {
+    const anchor = attrs['text-anchor'] || 'start';
+    const x = Number(attrs.x || 0);
+    const y = Number(attrs.y || 0);
+    const left = anchor === 'middle' ? x - width / 2 : anchor === 'end' ? x - width : x;
+    const foreign = svgEl('foreignObject', {
+      x: left, y: y - 18, width, height: 28, class: 'svg-html-foreign'
+    });
+    const label = h('div', {
+      class: `svg-html-label ${anchor === 'middle' ? 'center' : anchor === 'end' ? 'end' : ''}`,
+      style: attrs.fill ? `color:${attrs.fill}` : '', html
+    }, []);
+    foreign.append(label);
+    return foreign;
   }
 
-  /* Ordered so the compound token wins before its parts. */
-  const MATH_TOKENS = /(e\^ε|Δf|ε|δ|√)/g;
-  const escapeHtml = text => text.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
-  const labelHtml = text => escapeHtml(text).replace(MATH_TOKENS, '<span class="nocaps">$1</span>');
+  const inlineMath = source => `\\(${source}\\)`;
+
+  /* Dynamic demos update after the deck-wide MathJax pass. Batch those
+     updates so every formula is rendered by the same TeX-to-SVG pipeline
+     without re-typesetting the entire slide for each metric. */
+  const pendingTypesets = new Set();
+  let typesetScheduled = false;
+  function queueTypeset(node) {
+    if (!node) return;
+    pendingTypesets.add(node);
+    if (typesetScheduled) return;
+    typesetScheduled = true;
+    requestAnimationFrame(() => {
+      typesetScheduled = false;
+      const nodes = [...pendingTypesets].filter(item => item.isConnected);
+      pendingTypesets.clear();
+      if (!nodes.length || !window.MathJax || !MathJax.typesetPromise) return;
+      MathJax.typesetPromise(nodes)
+        .then(() => window.Reveal && Reveal.layout())
+        .catch(() => {});
+    });
+  }
+
+  function button(label, onClick, className, ariaLabel) {
+    return h('button', {
+      class: `btn ${className || ''}`, type: 'button', onclick: onClick,
+      'aria-label': ariaLabel || label.replace(/\\[()]/g, '')
+    }, [h('span', { html: label }, [])]);
+  }
 
   function metric(label, value, tone, hint) {
     return h('div', { class: `metric ${tone || ''}` }, [
-      h('span', { class: 'metric-label', html: labelHtml(label) }, []),
-      h('strong', { class: 'metric-value' }, [value]),
-      hint ? h('span', { class: 'metric-hint' }, [hint]) : null
+      h('span', { class: 'metric-label', html: label }, []),
+      h('strong', { class: 'metric-value', html: value }, []),
+      hint ? h('span', { class: 'metric-hint', html: hint }, []) : null
     ]);
   }
 
   const setMetric = (node, value, hint) => {
-    node.querySelector('.metric-value').textContent = value;
+    node.querySelector('.metric-value').innerHTML = value;
     const hintEl = node.querySelector('.metric-hint');
-    if (hintEl && hint !== undefined) hintEl.textContent = hint;
+    if (hintEl && hint !== undefined) hintEl.innerHTML = hint;
+    queueTypeset(node);
   };
 
   /** Segmented button group. Returns { node, value(), set(v) }. */
@@ -86,7 +126,7 @@
   /** Labelled range slider. Returns { node, value(), set(v) }. */
   function slider(config) {
     const format = config.format || (value => String(value));
-    const readout = h('b', { class: 'range-value' }, [format(config.value)]);
+    const readout = h('b', { class: 'range-value', html: format(config.value) }, []);
     const input = h('input', {
       type: 'range',
       min: String(config.min), max: String(config.max), step: String(config.step),
@@ -94,16 +134,17 @@
       'aria-label': config.aria || config.label
     });
     input.addEventListener('input', () => {
-      readout.textContent = format(Number(input.value));
+      readout.innerHTML = format(Number(input.value));
       config.onInput(Number(input.value));
+      queueTypeset(node);
     });
     const node = h('label', { class: 'slider-control' }, [
-      h('span', { class: 'slider-label' }, [config.label]), readout, input
+      h('span', { class: 'slider-label', html: config.label }, []), readout, input
     ]);
     return {
       node,
       value: () => Number(input.value),
-      set(value) { input.value = String(value); readout.textContent = format(value); }
+      set(value) { input.value = String(value); readout.innerHTML = format(value); queueTypeset(node); }
     };
   }
 
@@ -113,7 +154,8 @@
 
   const setVerdict = (node, tone, message) => {
     node.className = `verdict ${tone}`;
-    node.textContent = message;
+    node.innerHTML = message;
+    queueTypeset(node);
   };
 
   /* ---------- maths helpers ---------- */
@@ -314,7 +356,7 @@
     const stepBtn = button('Step', () => { advance(1); }, 'active');
     const runBtn = button('Run to the end', () => { toggleRun(); });
     const resetBtn = button('Reset', () => { stop(); cursor = 0; render(); });
-    const kControl = segmented('target k', [2, 3, 4, 5].map(v => ({ value: v, label: String(v) })), k, v => {
+    const kControl = segmented(`target ${inlineMath('k')}`, [2, 3, 4, 5].map(v => ({ value: v, label: String(v) })), k, v => {
       stop(); k = v; run = runIncognito(k); cursor = 0; render();
     });
 
@@ -397,7 +439,7 @@
               const scan = seen.find(s => s.key === node.key && s.kind === 'test');
               return h('span', { class: cls }, [
                 nodeLabel(node.attrs, node.levels),
-                scan ? h('span', { class: 'node-k' }, [`k=${scan.size}`]) : null
+                scan ? h('span', { class: 'node-k', html: inlineMath(`k=${scan.size}`) }, []) : null
               ]);
             })));
           return h('div', { class: 'lattice-group' }, [
@@ -416,23 +458,26 @@
       lattices.replaceChildren(
         ...panels,
         h('div', { class: 'lattice-legend' }, [
-          h('span', { class: 'legend-pass' }, ['scanned, satisfies k']),
-          h('span', { class: 'legend-fail' }, ['scanned, fails k']),
+          h('span', { class: 'legend-pass', html: `scanned, satisfies ${inlineMath('k')}` }, []),
+          h('span', { class: 'legend-fail', html: `scanned, fails ${inlineMath('k')}` }, []),
           h('span', { class: 'legend-implied' }, ['free by rollup']),
           h('span', { class: 'legend-pruned' }, ['not yet reached'])
         ])
       );
+      queueTypeset(lattices);
 
       /* --- trace --- */
       const lines = seen.slice().reverse().map(s => h('div', { class: s.kind === 'test' ? (s.pass ? 't-pass' : 't-fail') : '' }, [
         s.kind === 'test'
-          ? h('span', {}, [`scan ${s.label} → smallest class ${s.size} · `, h('b', {}, [s.pass ? `satisfies k=${run.k}` : `fails k=${run.k}`])])
+          ? h('span', {}, [`scan ${s.label} → smallest class ${s.size} · `,
+            h('b', { html: s.pass ? `satisfies ${inlineMath(`k=${run.k}`)}` : `fails ${inlineMath(`k=${run.k}`)}` }, [])])
           : h('span', { class: 'trace-dim' }, [`${s.label} ruled in by rollup from `, h('b', {}, [s.from]), ' — no scan needed'])
       ]));
       trace.replaceChildren(
         h('div', { class: 'lattice-title' }, ['algorithm trace · newest first']),
         h('div', { class: 'step-trace' }, lines.length ? lines : [h('div', { class: 'trace-dim' }, ['nothing scanned yet'])])
       );
+      queueTypeset(trace);
 
       /* The panel scrolls, so follow the node the algorithm is working on
          rather than leaving the class staring at an off-screen phase. */
@@ -478,7 +523,8 @@
 
     const kMetric = metric('Smallest class', '—', 'privacy-tone', 'the achieved k');
     const classMetric = metric('Equivalence classes', '—', 'model-tone', 'distinct QI patterns');
-    const lossMetric = metric('Information loss', '—', 'attack-tone', 'mean of 1 − 1/|cell| over cells');
+    const lossMetric = metric('Information loss', '—', 'attack-tone',
+      `mean of ${inlineMath('1-1/|\\mathrm{cell}|')} over cells`);
     const diversityMetric = metric('Least diverse class', '—', '', 'distinct loan values inside it');
 
     const tableWrap = h('div', { class: 'table-wrap' }, []);
@@ -544,9 +590,10 @@
       diversityMetric.classList.toggle('is-leak', diversity === 1);
 
       badge.className = `k-badge ${minK >= 3 ? 'pass' : 'fail'}`;
-      badge.textContent = minK >= 3
-        ? `${minK}-anonymous — satisfies the worksheet's k = 3`
+      badge.innerHTML = minK >= 3
+        ? `${minK}-anonymous — satisfies the worksheet's ${inlineMath('k=3')}`
         : `Not 3-anonymous — one class holds only ${minK} record${minK === 1 ? '' : 's'}`;
+      queueTypeset(badge);
 
       const table = h('table', { class: 'data-table' }, [
         h('thead', {}, [h('tr', {}, ['#', 'Postal code', 'Age', 'Income (K)', 'Loan taken', 'Class size']
@@ -595,8 +642,9 @@
     const ratio = () => prYesGivenY() / prYesGivenN();          // = (1+p)/(1−p)
     const eps = () => Math.log(ratio());
 
-    const epsMetric = metric('Privacy cost ε', '—', 'privacy-tone', 'ln of the ratio below');
-    const ratioMetric = metric('Likelihood ratio', '—', 'attack-tone', 'Pr[Yes|Y] ÷ Pr[Yes|N]');
+    const epsMetric = metric(`Privacy cost ${inlineMath('\\varepsilon')}`, '—', 'privacy-tone', `${inlineMath('\\ln')} of the ratio below`);
+    const ratioMetric = metric('Likelihood ratio', '—', 'attack-tone',
+      inlineMath('\\Pr[\\mathsf{Yes}\\mid\\mathsf{Y}] \\div \\Pr[\\mathsf{Yes}\\mid\\mathsf{N}]'));
     const estMetric = metric('Estimated “Yes” rate', '—', 'model-tone', 'from the noisy answers only');
     const errMetric = metric('95% interval', '—', '', 'width grows as p falls');
 
@@ -604,18 +652,19 @@
     const verdict = verdictBox('');
 
     const pSlider = slider({
-      label: 'p (answer truthfully)', min: 0.02, max: 0.98, step: 0.01, value: p,
+      label: `${inlineMath('p')} (answer truthfully)`, min: 0.02, max: 0.98, step: 0.01, value: p,
       format: v => v.toFixed(2), onInput: v => { p = v; render(); }
     });
-    const solveBtn = button('Solve for ε = ln 7', () => {
+    const solveBtn = button(`Solve for ${inlineMath('\\varepsilon=\\ln 7')}`, () => {
       /* (1+p)/(1−p) = 7  ⟹  p = 3/4 */
       p = 0.75; pSlider.set(p); render();
     }, 'active');
-    const lectureBtn = button('The lecture’s p = 0.5', () => { p = 0.5; pSlider.set(p); render(); });
+    const lectureBtn = button(`The lecture’s ${inlineMath('p=0.5')}`, () => { p = 0.5; pSlider.set(p); render(); });
 
     root.append(
       h('div', { class: 'lab-toolbar' }, [
-        h('div', { class: 'toolbar-left' }, [pSlider.node, h('span', { class: 'lab-note' }, ['fixed: n = 2,000 · true Yes rate = 30%'])]),
+        h('div', { class: 'toolbar-left' }, [pSlider.node,
+          h('span', { class: 'lab-note', html: `fixed: ${inlineMath('n=2{,}000')} · true Yes rate ${inlineMath('=30\\%')}` }, [])]),
         h('div', { class: 'btn-group' }, [solveBtn, lectureBtn])
       ]),
       h('div', { class: 'metric-row metric-row-four' }, [epsMetric, ratioMetric, estMetric, errMetric]),
@@ -625,36 +674,39 @@
 
     function render() {
       const yesY = prYesGivenY(), yesN = prYesGivenN();
-      setMetric(epsMetric, `ln ${ratio().toFixed(3)} = ${eps().toFixed(3)}`);
-      setMetric(ratioMetric, ratio().toFixed(3), `= (1+p)/(1−p) with p = ${p.toFixed(2)}`);
+      setMetric(epsMetric, inlineMath(`\\ln ${ratio().toFixed(3)}=${eps().toFixed(3)}`));
+      setMetric(ratioMetric, ratio().toFixed(3),
+        inlineMath(`=\\frac{1+p}{1-p}\\quad\\text{with }p=${p.toFixed(2)}`));
 
       /* Utility: the unbiased estimator from lecture 6, x̂ = (Z/n − ½(1−p))/p,
          and its exact standard error. */
       const q = truth * p + 0.5 * (1 - p);          // Pr[a given respondent says Yes]
       const se = Math.sqrt(q * (1 - q) / n) / p;
-      setMetric(estMetric, `${(truth * 100).toFixed(0)}% ± ${(1.96 * se * 100).toFixed(1)}%`,
-        'unbiased: E[x̂] = x');
-      setMetric(errMetric, `±${(1.96 * se * 100).toFixed(1)} points`, `n = ${n.toLocaleString()}, p = ${p.toFixed(2)}`);
+      setMetric(estMetric, inlineMath(`${(truth * 100).toFixed(0)}\\% \\pm ${(1.96 * se * 100).toFixed(1)}\\%`),
+        `unbiased: ${inlineMath('\\mathbb{E}[\\hat{x}]=x')}`);
+      setMetric(errMetric, inlineMath(`\\pm ${(1.96 * se * 100).toFixed(1)}`) + ' points',
+        inlineMath(`n=${n.toLocaleString()},\\ p=${p.toFixed(2)}`));
 
       bars.replaceChildren(...[
-        ['Pr[Yes | truth = Y]', yesY, 'truth'],
-        ['Pr[Yes | truth = N]', yesN, 'lie']
+        [inlineMath('\\Pr[\\mathsf{Yes}\\mid\\mathsf{truth}=\\mathsf{Y}]'), yesY, 'truth'],
+        [inlineMath('\\Pr[\\mathsf{Yes}\\mid\\mathsf{truth}=\\mathsf{N}]'), yesN, 'lie']
       ].map(([label, value, tone]) => h('div', { class: 'ratio-row' }, [
-        h('span', { class: 'ratio-label' }, [label]),
+        h('span', { class: 'ratio-label', html: label }, []),
         h('div', { class: 'ratio-track' }, [h('div', { class: `ratio-fill ${tone}`, style: `width:${value * 100}%` }, [])]),
         h('span', { class: 'ratio-value' }, [value.toFixed(3)])
       ])));
+      queueTypeset(bars);
 
       const atTarget = Math.abs(eps() - Math.log(7)) < 5e-3;
       if (atTarget) {
         setVerdict(verdict, 'ok',
-          `p = 3/4. The ratio is exactly 7, so ε = ln 7 ≈ ${Math.log(7).toFixed(3)} — the worksheet's answer. Setting (1+p)/(1−p) = 7 gives 1+p = 7−7p, so p = 3/4. Note the direction: a larger p means more truth, a larger ratio, and a weaker guarantee.`);
+          `${inlineMath('p=\\tfrac34')}. The ratio is exactly 7, so ${inlineMath(`\\varepsilon=\\ln 7\\approx ${Math.log(7).toFixed(3)}`)} — the worksheet's answer. Setting ${inlineMath('\\frac{1+p}{1-p}=7')} gives ${inlineMath('1+p=7-7p')}, so ${inlineMath('p=\\tfrac34')}. Note the direction: a larger ${inlineMath('p')} means more truth, a larger ratio, and a weaker guarantee.`);
       } else if (Math.abs(p - 0.5) < 1e-9) {
         setVerdict(verdict, 'ok',
-          `p = 0.5 is the coin-flip version from lecture 6: the ratio is (0.5+0.25)/0.25 = 3, so the mechanism is ln 3-differentially private. Now push p up to reach ln 7.`);
+          `${inlineMath('p=0.5')} is the coin-flip version from lecture 6: the ratio is ${inlineMath('\\frac{0.5+0.25}{0.25}=3')}, so the mechanism is ${inlineMath('\\ln 3')}-differentially private. Now push ${inlineMath('p')} up to reach ${inlineMath('\\ln 7')}.`);
       } else {
         setVerdict(verdict, eps() < Math.log(7) ? 'ok' : 'warn',
-          `At p = ${p.toFixed(2)} each respondent is ${ratio().toFixed(2)}× more likely to say Yes when the truth is Yes, so ε = ${eps().toFixed(3)}. The estimate stays unbiased at every p — only its interval changes, from ±${(1.96 * se * 100).toFixed(1)} points here.`);
+          `At ${inlineMath(`p=${p.toFixed(2)}`)} each respondent is ${inlineMath(`${ratio().toFixed(2)}\\times`)} more likely to say Yes when the truth is Yes, so ${inlineMath(`\\varepsilon=${eps().toFixed(3)}`)}. The estimate stays unbiased at every ${inlineMath('p')} — only its interval changes, to ${inlineMath(`\\pm ${(1.96 * se * 100).toFixed(1)}`)} points here.`);
       }
     }
 
@@ -671,14 +723,14 @@
     let removed = 3;                       // index of the record D′ drops
     const mechanism = 'sample';
 
-    const ratioMetric = metric('Worst-case ratio', '—', 'attack-tone', 'over all outputs O');
-    const epsMetric = metric('Smallest ε that works', '—', 'privacy-tone', 'from the definition');
-    const witnessMetric = metric('The witness output', '—', 'model-tone', 'the O that breaks it');
+    const ratioMetric = metric('Worst-case ratio', '—', 'attack-tone', `over all outputs ${inlineMath('O')}`);
+    const epsMetric = metric(`Smallest ${inlineMath('\\varepsilon')} that works`, '—', 'privacy-tone', 'from the definition');
+    const witnessMetric = metric('The witness output', '—', 'model-tone', `the ${inlineMath('O')} that breaks it`);
 
     const compare = h('div', { class: 'dist-compare' }, []);
     const verdict = verdictBox('');
 
-    const removeControl = segmented('D′ drops', NAMES.map((name, i) => ({ value: i, label: name })), removed,
+    const removeControl = segmented(`${inlineMath("D'")} drops`, NAMES.map((name, i) => ({ value: i, label: name })), removed,
       v => { removed = v; render(); });
     root.append(
       h('div', { class: 'lab-toolbar' }, [h('div', { class: 'toolbar-left' }, [removeControl.node, h('span', { class: 'lab-note' }, ['mechanism: return one uniformly random record'])])]),
@@ -692,17 +744,20 @@
         const inD1 = NAMES.map(() => 1 / NAMES.length);
         const inD2 = NAMES.map((_, i) => (i === removed ? 0 : 1 / (NAMES.length - 1)));
 
-        setMetric(ratioMetric, '∞', `Pr = ${(1 / NAMES.length).toFixed(2)} against 0`);
-        setMetric(epsMetric, 'none exists', 'no finite ε satisfies the definition');
-        setMetric(witnessMetric, `O = {${NAMES[removed]}}`, 'possible under D, impossible under D′');
+        setMetric(ratioMetric, inlineMath('\\infty'),
+          `${inlineMath(`\\Pr=${(1 / NAMES.length).toFixed(2)}`)} against ${inlineMath('0')}`);
+        setMetric(epsMetric, 'none exists', `no finite ${inlineMath('\\varepsilon')} satisfies the definition`);
+        setMetric(witnessMetric, inlineMath(`O=\\{\\text{${NAMES[removed]}}\\}`),
+          `possible under ${inlineMath('D')}, impossible under ${inlineMath("D'")}`);
         ratioMetric.classList.add('is-leak');
 
         compare.replaceChildren(
-          distCard('D — all five records', NAMES, inD1, removed),
-          distCard(`D′ — ${NAMES[removed]} removed`, NAMES, inD2, removed)
+          distCard(`${inlineMath('D')} — all five records`, NAMES, inD1, removed),
+          distCard(`${inlineMath("D'")} — ${NAMES[removed]} removed`, NAMES, inD2, removed)
         );
+        queueTypeset(compare);
         setVerdict(verdict, 'bad',
-          `Take O = {${NAMES[removed]}}. Then Pr[M(D) ∈ O] = 1/|D| = ${(1 / NAMES.length).toFixed(2)} while Pr[M(D′) ∈ O] = 0, so the requirement Pr[M(D) ∈ O] ≤ e^ε · Pr[M(D′) ∈ O] reads ${(1 / NAMES.length).toFixed(2)} ≤ 0. No ε, however large, can rescue it — e^ε multiplied by zero is still zero. Releasing a real record cannot be private, no matter which record.`);
+          `Take ${inlineMath(`O=\\{\\text{${NAMES[removed]}}\\}`)}. Then ${inlineMath(`\\Pr[M(D)\\in O]=\\frac{1}{|D|}=${(1 / NAMES.length).toFixed(2)}`)} while ${inlineMath("\\Pr[M(D')\\in O]=0")}, so the requirement ${inlineMath("\\Pr[M(D)\\in O]\\le e^{\\varepsilon}\\Pr[M(D')\\in O]")} reads ${inlineMath(`${(1 / NAMES.length).toFixed(2)}\\le 0`)}. No ${inlineMath('\\varepsilon')}, however large, can rescue it — ${inlineMath('e^{\\varepsilon}\\cdot 0=0')}. Releasing a real record cannot be private, no matter which record.`);
       } else {
         /* Same neighbouring pair, answered with Laplace instead. */
         const eps = 1.0, sens = 1, b = sens / eps;
@@ -712,20 +767,22 @@
         const pdf = (x, mu) => Math.exp(-Math.abs(x - mu) / b) / (2 * b);
         const worst = Math.max(...grid.map(x => pdf(x, f1) / pdf(x, f2)));
 
-        setMetric(ratioMetric, worst.toFixed(3), `bounded by e^ε = ${Math.exp(eps).toFixed(3)}`);
-        setMetric(epsMetric, `ε = ${eps.toFixed(1)}`, 'holds for every output simultaneously');
+        setMetric(ratioMetric, worst.toFixed(3),
+          `bounded by ${inlineMath(`e^{\\varepsilon}=${Math.exp(eps).toFixed(3)}`)}`);
+        setMetric(epsMetric, inlineMath(`\\varepsilon=${eps.toFixed(1)}`), 'holds for every output simultaneously');
         setMetric(witnessMetric, 'none', 'every output is possible under both');
         ratioMetric.classList.remove('is-leak');
 
         const labels = grid.filter((_, i) => i % 2 === 0).map(x => x.toFixed(0));
         compare.replaceChildren(
-          distCard('count(D) = 5 + Lap(1/ε) · relative likelihood', labels,
+          distCard(`${inlineMath('\\operatorname{count}(D)=5+\\operatorname{Lap}(1/\\varepsilon)')} · relative likelihood`, labels,
             labels.map(x => pdf(Number(x), f1) * 2), -1),
-          distCard('count(D′) = 4 + Lap(1/ε) · relative likelihood', labels,
+          distCard(`${inlineMath("\\operatorname{count}(D')=4+\\operatorname{Lap}(1/\\varepsilon)")} · relative likelihood`, labels,
             labels.map(x => pdf(Number(x), f2) * 2), -1)
         );
+        queueTypeset(compare);
         setVerdict(verdict, 'ok',
-          `The difference is support, not shape. Laplace noise gives every output a strictly positive density under both datasets, so the ratio is finite everywhere and is capped at e^ε = ${Math.exp(eps).toFixed(2)}. Sampling a record leaves outputs that one dataset can produce and the other simply cannot — and one such output is enough to break the definition.`);
+          `The difference is support, not shape. Laplace noise gives every output a strictly positive density under both datasets, so the ratio is finite everywhere and is capped at ${inlineMath(`e^{\\varepsilon}=${Math.exp(eps).toFixed(2)}`)}. Sampling a record leaves outputs that one dataset can produce and the other simply cannot — and one such output is enough to break the definition.`);
       }
     }
 
@@ -757,7 +814,7 @@
     let eps = 1;
     let prior = 0.5;
 
-    const expMetric = metric('e^ε', '—', 'attack-tone', 'the allowed odds swing');
+    const expMetric = metric(inlineMath('e^{\\varepsilon}'), '—', 'attack-tone', 'the allowed odds swing');
     const rangeMetric = metric('Posterior belief', '—', 'privacy-tone', 'after seeing the output');
     const swingMetric = metric('Belief can move by', '—', 'model-tone', 'percentage points');
 
@@ -767,7 +824,7 @@
 
     /* Slider is on ln ε so the interesting decade (0.01 – 1) is not squashed. */
     const epsSlider = slider({
-      label: 'ε', min: Math.log(0.01), max: Math.log(50), step: 0.01, value: Math.log(eps),
+      label: inlineMath('\\varepsilon'), min: Math.log(0.01), max: Math.log(50), step: 0.01, value: Math.log(eps),
       format: v => fmtEps(Math.exp(v)), onInput: v => { eps = Math.exp(v); render(); }
     });
     const priorSlider = slider({
@@ -776,7 +833,8 @@
     });
 
     const presets = h('div', { class: 'btn-group' }, [
-      ['ε = 0.1', 0.1], ['ε = 1', 1], ['ε = 10', 10], ['ε = 50', 50]
+      [inlineMath('\\varepsilon=0.1'), 0.1], [inlineMath('\\varepsilon=1'), 1],
+      [inlineMath('\\varepsilon=10'), 10], [inlineMath('\\varepsilon=50'), 50]
     ].map(([label, value]) => button(label, () => {
       eps = value; epsSlider.set(Math.log(value)); render();
     })));
@@ -806,9 +864,9 @@
       const lo = posterior(-1), hi = posterior(+1);
       const eEps = Math.exp(eps);
       setMetric(expMetric, eEps >= 1e6 ? eEps.toExponential(2) : eEps.toFixed(eEps < 100 ? 2 : 0));
-      setMetric(rangeMetric, `${(lo * 100).toFixed(1)}% – ${(hi * 100).toFixed(1)}%`,
-        `started at ${(prior * 100).toFixed(0)}%`);
-      setMetric(swingMetric, `${((hi - lo) * 100).toFixed(1)} pts`,
+      setMetric(rangeMetric, inlineMath(`${(lo * 100).toFixed(1)}\\% \\text{ to } ${(hi * 100).toFixed(1)}\\%`),
+        `started at ${inlineMath(`${(prior * 100).toFixed(0)}\\%`)}`);
+      setMetric(swingMetric, inlineMath(`${((hi - lo) * 100).toFixed(1)}`) + ' pts',
         (hi - lo) > 0.9 ? 'effectively no constraint' : 'the guarantee is binding');
       swingMetric.classList.toggle('is-leak', (hi - lo) > 0.9);
 
@@ -818,20 +876,21 @@
       );
       caption.replaceChildren(
         h('span', {}, ['An adversary who believed ']),
-        h('b', {}, [`${(prior * 100).toFixed(0)}%`]),
+        h('b', { html: inlineMath(`${(prior * 100).toFixed(0)}\\%`) }, []),
         h('span', {}, [' that you are in the dataset may end up believing anywhere in ']),
-        h('b', {}, [`${(lo * 100).toFixed(1)}% – ${(hi * 100).toFixed(1)}%`]),
+        h('b', { html: inlineMath(`${(lo * 100).toFixed(1)}\\% \\text{ to } ${(hi * 100).toFixed(1)}\\%`) }, []),
         h('span', {}, ['.'])
       );
+      queueTypeset(caption);
 
       if (eps <= 0.15) {
-        setVerdict(verdict, 'ok', `ε = ${fmtEps(eps)} is the "very strong" rule of thumb from lecture 6: e^ε ≈ ${eEps.toFixed(2)}, so no output can move anyone's belief by more than ${((hi - lo) * 100).toFixed(1)} points. Strong, and expensive — the noise scales as Δf/ε.`);
+        setVerdict(verdict, 'ok', `${inlineMath(`\\varepsilon=${fmtEps(eps)}`)} is the "very strong" rule of thumb from lecture 6: ${inlineMath(`e^{\\varepsilon}\\approx ${eEps.toFixed(2)}`)}, so no output can move anyone's belief by more than ${inlineMath(`${((hi - lo) * 100).toFixed(1)}`)} points. Strong, and expensive — the noise scales as ${inlineMath('\\Delta f/\\varepsilon')}.`);
       } else if (eps <= 1.2) {
-        setVerdict(verdict, 'ok', `ε ≈ 1 is the standard "good guarantee". Belief about you can move from ${(prior * 100).toFixed(0)}% to at most ${(hi * 100).toFixed(1)}% or as low as ${(lo * 100).toFixed(1)}% — a real shift, but a bounded one.`);
+        setVerdict(verdict, 'ok', `${inlineMath('\\varepsilon\\approx 1')} is the standard "good guarantee". Belief about you can move from ${inlineMath(`${(prior * 100).toFixed(0)}\\%`)} to at most ${inlineMath(`${(hi * 100).toFixed(1)}\\%`)} or as low as ${inlineMath(`${(lo * 100).toFixed(1)}\\%`)} — a real shift, but a bounded one.`);
       } else if (eps < 20) {
-        setVerdict(verdict, 'warn', `e^ε = ${eEps.toFixed(0)} lets belief run from ${(lo * 100).toFixed(1)}% to ${(hi * 100).toFixed(1)}%. The inequality still holds, but the allowed update is already very broad.`);
+        setVerdict(verdict, 'warn', `${inlineMath(`e^{\\varepsilon}=${eEps.toFixed(0)}`)} lets belief run from ${inlineMath(`${(lo * 100).toFixed(1)}\\%`)} to ${inlineMath(`${(hi * 100).toFixed(1)}\\%`)}. The inequality still holds, but the allowed update is already very broad.`);
       } else {
-        setVerdict(verdict, 'bad', `This is the worksheet's point. At ε = ${fmtEps(eps)}, e^ε ≈ ${eEps.toExponential(2)}: one dataset may produce a given output ${eEps.toExponential(1)} times more readily than its neighbour, and the posterior band covers essentially the whole axis. The inequality is still formally satisfied — it just no longer rules anything out. A guarantee that forbids nothing is not a guarantee.`);
+        setVerdict(verdict, 'bad', `This is the worksheet's point. At ${inlineMath(`\\varepsilon=${fmtEps(eps)}`)}, ${inlineMath(`e^{\\varepsilon}\\approx ${eEps.toExponential(2)}`)}: one dataset may produce a given output ${inlineMath(`${eEps.toExponential(1)}\\times`)} more readily than its neighbour, and the posterior band covers essentially the whole axis. The inequality is still formally satisfied — it just no longer rules anything out. A guarantee that forbids nothing is not a guarantee.`);
       }
     }
 
@@ -856,10 +915,10 @@
     let units = Array.from({ length: 200 }, () => rnd());
     let data = null;
 
-    const sensMetric = metric('Sensitivity Δf', '—', 'attack-tone', 'worst case over neighbours');
-    const scaleMetric = metric('Laplace scale b', '—', 'privacy-tone', 'b = Δf / ε');
-    const answerMetric = metric('One DP answer', '—', 'model-tone', 'true value + Lap(b)');
-    const errorMetric = metric('Typical error', '—', '', 'std dev = √2 · b');
+    const sensMetric = metric(`Sensitivity ${inlineMath('\\Delta f')}`, '—', 'attack-tone', 'worst case over neighbours');
+    const scaleMetric = metric(`Laplace scale ${inlineMath('b')}`, '—', 'privacy-tone', inlineMath('b=\\Delta f/\\varepsilon'));
+    const answerMetric = metric('One DP answer', '—', 'model-tone', `true value ${inlineMath('+\\operatorname{Lap}(b)')}`);
+    const errorMetric = metric('Typical error', '—', '', `std dev ${inlineMath('=\\sqrt{2}b')}`);
 
     const chart = svgEl('svg', { viewBox: '0 0 900 168', role: 'img', 'aria-label': 'Probability density of released values under two neighbouring datasets, with one sampled release marked' });
     const formula = h('div', { class: 'eq math small' }, []);
@@ -869,15 +928,16 @@
     const queryControl = segmented('query', [
       { value: 'sum', label: 'sum' }, { value: 'avg', label: 'average' }
     ], query, v => { query = v; rebuild(); });
-    const wideControl = segmented('v₁ range', [
-      { value: false, label: 'v₁ ∈ [l, h]  (Q3)' }, { value: true, label: 'v₁ ∈ [l, 2h]  (Q4)' }
+    const wideControl = segmented(`${inlineMath('v_1')} range`, [
+      { value: false, label: `${inlineMath('v_1\\in[l,h]')} (Q3)` },
+      { value: true, label: `${inlineMath('v_1\\in[l,2h]')} (Q4)` }
     ], wideFirst, v => { wideFirst = v; rebuild(); });
 
-    const nSlider = slider({ label: 'n', min: 5, max: 200, step: 1, value: n, onInput: v => { n = v; rebuild(); } });
+    const nSlider = slider({ label: inlineMath('n'), min: 5, max: 200, step: 1, value: n, onInput: v => { n = v; rebuild(); } });
     root.append(
       h('div', { class: 'lab-toolbar' }, [
         h('div', { class: 'toolbar-left' }, [queryControl.node, wideControl.node, nSlider.node]),
-        h('span', { class: 'lab-note' }, ['fixed: l = 0 · h = 100 · ε = 1'])
+        h('span', { class: 'lab-note', html: `fixed: ${inlineMath('l=0')} · ${inlineMath('h=100')} · ${inlineMath('\\varepsilon=1')}` }, [])
       ]),
       h('div', { class: 'metric-row metric-row-four' }, [sensMetric, scaleMetric, answerMetric, errorMetric]),
       formula,
@@ -910,11 +970,11 @@
       const draw = truth + laplace(mulberry32(Math.round(eps * 1e6) + n), b);
 
       setMetric(sensMetric, df >= 1 ? df.toFixed(df >= 10 ? 0 : 2) : df.toFixed(3),
-        query === 'sum' ? (wideFirst ? '= 2h' : '= h') : (wideFirst ? '= 2h/n' : '= h/n'));
+        inlineMath(query === 'sum' ? (wideFirst ? '=2h' : '=h') : (wideFirst ? '=2h/n' : '=h/n')));
       setMetric(scaleMetric, b >= 1 ? b.toFixed(1) : b.toFixed(3));
       setMetric(answerMetric, draw.toFixed(1), `true value ${truth.toFixed(1)}`);
-      setMetric(errorMetric, `± ${(Math.SQRT2 * b).toFixed(1)}`,
-        `${(Math.SQRT2 * b / Math.abs(truth) * 100).toFixed(1)}% of the answer`);
+      setMetric(errorMetric, inlineMath(`\\pm ${(Math.SQRT2 * b).toFixed(1)}`),
+        `${inlineMath(`${(Math.SQRT2 * b / Math.abs(truth) * 100).toFixed(1)}\\%`)} of the answer`);
 
       formula.innerHTML = query === 'sum'
         ? `\\[ M(v_1,\\dots,v_n)=\\sum_i v_i + Y,\\qquad Y\\sim \\mathrm{Lap}\\!\\left(\\frac{${wideFirst ? '2h' : 'h'}}{\\varepsilon}\\right) \\]`
@@ -922,8 +982,9 @@
       if (window.MathJax && MathJax.typesetPromise) MathJax.typesetPromise([formula]).catch(() => {});
 
       assumption.innerHTML = wideFirst
-        ? `<b>Why 2h and not h:</b> sensitivity is a worst case over <em>every</em> neighbouring pair. The pair that moves the answer most is the one that adds or removes v₁, and v₁ may be as large as 2h — so the whole sum pays for the single widest record, even though the other n−1 values still live in [l, h].`
-        : `<b>What this assumes:</b> that 0 ≤ l &lt; h, so the largest change one record can make is h. If l were negative the sensitivity would be max(|l|, h) instead. The worksheet takes the non-negative case; it is worth saying so out loud.`;
+        ? `<b>Why ${inlineMath('2h')} and not ${inlineMath('h')}:</b> sensitivity is a worst case over <em>every</em> neighbouring pair. The pair that moves the answer most is the one that adds or removes ${inlineMath('v_1')}, and ${inlineMath('v_1')} may be as large as ${inlineMath('2h')} — so the whole sum pays for the single widest record, even though the other ${inlineMath('n-1')} values still live in ${inlineMath('[l,h]')}.`
+        : `<b>What this assumes:</b> ${inlineMath('0\\le l<h')}, so the largest change one record can make is ${inlineMath('h')}. If ${inlineMath('l')} were negative the sensitivity would be ${inlineMath('\\max(|l|,h)')} instead. The worksheet takes the non-negative case; it is worth saying so out loud.`;
+      queueTypeset(assumption);
 
       /* Density of the released answer under both neighbouring worlds. */
       const W = 900, H = 168, pad = 34;
@@ -950,21 +1011,24 @@
         svgEl('path', { d: path(truth + df), fill: 'none', stroke: 'var(--accent-2)', 'stroke-width': 2.2, 'stroke-dasharray': '5 4' }),
         svgEl('line', { x1: sx(truth), y1: 22, x2: sx(truth), y2: H - 26, stroke: 'var(--accent)', 'stroke-width': 1, 'stroke-dasharray': '3 3', opacity: .7 }),
         svgEl('circle', { cx: sx(draw), cy: sy(pdf(draw, truth)), r: 5, fill: 'var(--accent-3)' }),
-        svgText({ class: 'axis-label', x: sx(truth), y: 16, 'text-anchor': 'middle', fill: 'var(--accent)' }, `f(D) = ${truth.toFixed(1)}`),
-        svgText({ class: 'axis-label', x: clamp(sx(truth + df), pad, W - pad - 90), y: 16, fill: 'var(--accent-2)' }, `f(D′) = ${(truth + df).toFixed(1)}`),
+        svgHtmlText({ x: sx(truth), y: 16, 'text-anchor': 'middle', fill: 'var(--accent)' },
+          inlineMath(`f(D)=${truth.toFixed(1)}`), 150),
+        svgHtmlText({ x: clamp(sx(truth + df), pad, W - pad - 90), y: 16, fill: 'var(--accent-2)' },
+          inlineMath(`f(D')=${(truth + df).toFixed(1)}`), 160),
         svgText({ class: 'axis-label', x: clamp(sx(draw), pad, W - pad - 80), y: sy(pdf(draw, truth)) - 12, fill: 'var(--accent-3)' }, `released ${draw.toFixed(1)}`),
         svgText({ class: 'axis-label', x: pad + 6, y: 36 }, 'probability density'),
         svgText({ class: 'axis-label', x: W / 2, y: H - 8, 'text-anchor': 'middle' }, 'possible released value'),
         svgText({ class: 'axis-label', x: pad, y: H - 8 }, x0.toFixed(0)),
         svgText({ class: 'axis-label', x: W - pad, y: H - 8, 'text-anchor': 'end' }, x1.toFixed(0))
       );
+      queueTypeset(chart);
 
       const rel = Math.SQRT2 * b / Math.abs(truth);
       setVerdict(verdict,
         rel < 0.02 ? 'ok' : rel < 0.15 ? 'warn' : 'bad',
         query === 'sum'
-          ? `A sum over n = ${n} values pays Δf = ${df.toFixed(0)} regardless of n: the answer is ${truth.toFixed(0)} ± ${(Math.SQRT2 * b).toFixed(0)}. Adding people does not shrink that ± at all — it only grows the sum it sits beside, so the error falls in relative terms while staying identical in absolute ones.`
-          : `An average divides the sensitivity by n, so Δf = ${df.toFixed(2)} and the ± is ${(Math.SQRT2 * b).toFixed(2)} against an answer of ${truth.toFixed(1)}. Compare the percentage with the sum's: it is identical, because an average is just the sum over n and the noise is divided by n too. What actually changes is the absolute error — it shrinks like 1/n against an answer that stays on the same scale, so a DP mean converges to the truth while a DP sum's error never moves.`);
+          ? `A sum over ${inlineMath(`n=${n}`)} values pays ${inlineMath(`\\Delta f=${df.toFixed(0)}`)} regardless of ${inlineMath('n')}: the answer is ${inlineMath(`${truth.toFixed(0)}\\pm${(Math.SQRT2 * b).toFixed(0)}`)}. Adding people does not shrink that ${inlineMath('\\pm')} at all — it only grows the sum it sits beside, so the error falls in relative terms while staying identical in absolute ones.`
+          : `An average divides the sensitivity by ${inlineMath('n')}, so ${inlineMath(`\\Delta f=${df.toFixed(2)}`)} and the error is ${inlineMath(`\\pm${(Math.SQRT2 * b).toFixed(2)}`)} against an answer of ${inlineMath(truth.toFixed(1))}. Compare the percentage with the sum's: it is identical, because an average is just the sum over ${inlineMath('n')} and the noise is divided by ${inlineMath('n')} too. What actually changes is the absolute error — it shrinks like ${inlineMath('1/n')} against an answer that stays on the same scale, so a DP mean converges to the truth while a DP sum's error never moves.`);
     }
 
     rebuild();
@@ -990,7 +1054,7 @@
     const maxIncome = Math.max(...incomes);
 
     const biasMetric = metric('Clipping bias', '—', 'model-tone', 'from the values you cut');
-    const noiseMetric = metric('Noise (std dev)', '—', 'privacy-tone', '√2 · C / (n ε)');
+    const noiseMetric = metric('Noise (std dev)', '—', 'privacy-tone', inlineMath('\\sqrt{2}C/(n\\varepsilon)'));
     const totalMetric = metric('Simulated RMSE', '—', 'attack-tone', 'root-mean-square error');
     const bestMetric = metric('Best C in this sample', '—', '', 'lowest simulated RMSE');
 
@@ -998,11 +1062,11 @@
     const verdict = verdictBox('');
 
     const clipSlider = slider({
-      label: 'clip bound C', min: Math.log(20000), max: Math.log(8000000), step: 0.01, value: Math.log(clip),
+      label: `clip bound ${inlineMath('C')}`, min: Math.log(20000), max: Math.log(8000000), step: 0.01, value: Math.log(clip),
       format: v => money(Math.exp(v)), onInput: v => { clip = Math.exp(v); render(); }
     });
     const epsSlider = slider({
-      label: 'ε', min: Math.log(0.1), max: Math.log(5), step: 0.01, value: Math.log(eps),
+      label: inlineMath('\\varepsilon'), min: Math.log(0.1), max: Math.log(5), step: 0.01, value: Math.log(eps),
       format: v => fmtEps(Math.exp(v)), onInput: v => { eps = Math.exp(v); render(); }
     });
     const bestBtn = button('Jump to the best C', () => {
@@ -1042,8 +1106,8 @@
       const b = bias(clip), nz = noise(clip), tot = total(clip);
       const clipped = incomes.filter(v => v > clip).length;
       setMetric(biasMetric, money(b), `${clipped} of ${n} incomes cut`);
-      setMetric(noiseMetric, money(nz), `C/n = ${money(clip / n)} sensitivity`);
-      setMetric(totalMetric, money(tot), `${(tot / trueMean * 100).toFixed(1)}% of the true mean`);
+      setMetric(noiseMetric, money(nz), `${inlineMath('C/n')} gives ${money(clip / n)} sensitivity`);
+      setMetric(totalMetric, money(tot), `${inlineMath(`${(tot / trueMean * 100).toFixed(1)}\\%`)} of the true mean`);
       const best = bestClip();
       setMetric(bestMetric, money(best), `RMSE ${money(total(best))}`);
 
@@ -1071,28 +1135,32 @@
         svgEl('line', { x1: sx(best), y1: 20, x2: sx(best), y2: H - 30, stroke: 'var(--accent-3)', 'stroke-width': 1.4, 'stroke-dasharray': '3 3' }),
         svgEl('line', { x1: sx(clip), y1: 20, x2: sx(clip), y2: H - 30, stroke: 'var(--ink)', 'stroke-width': 1.2, opacity: .55 }),
         svgEl('circle', { cx: sx(clip), cy: sy(tot), r: 5, fill: 'var(--accent-2)' }),
-        svgText({ class: 'axis-label', x: sx(best), y: 15, 'text-anchor': 'middle', fill: 'var(--accent-3)' }, 'best C'),
+        svgHtmlText({ x: sx(best), y: 15, 'text-anchor': 'middle', fill: 'var(--accent-3)' },
+          `best ${inlineMath('C')}`, 100),
         svgText({ class: 'axis-label', x: pad, y: 20, fill: 'var(--accent-4)' }, 'bias from clipping'),
-        svgText({ class: 'axis-label', x: W - pad, y: 20, 'text-anchor': 'end', fill: 'var(--accent)' }, 'noise ∝ C'),
-        svgText({ class: 'axis-label', x: sx(best) + 16, y: sy(total(best)) + 18, fill: 'var(--accent-2)' }, 'total RMSE'),
+        svgHtmlText({ x: W - pad, y: 20, 'text-anchor': 'end', fill: 'var(--accent)' },
+          `noise ${inlineMath('\\propto C')}`, 145),
+        svgText({ class: 'axis-label', x: sx(best) + 16, y: sy(total(best)) - 10, fill: 'var(--accent-2)' }, 'total RMSE'),
         svgText({ class: 'axis-label', x: pad + 6, y: 39 }, 'error ($)'),
-        svgText({ class: 'axis-label', x: W / 2, y: H - 8, 'text-anchor': 'middle' }, 'clipping bound C  (log scale)'),
+        svgHtmlText({ x: W / 2, y: H - 8, 'text-anchor': 'middle' },
+          `clipping bound ${inlineMath('C')} (log scale)`, 260),
         svgText({ class: 'axis-label', x: pad, y: H - 8 }, '$20K'),
         svgText({ class: 'axis-label', x: W - pad, y: H - 8, 'text-anchor': 'end' }, '$8M')
       );
+      queueTypeset(chart);
 
       if (clip > maxIncome * 0.9) {
         setVerdict(verdict, 'bad',
           `With no meaningful bound the sensitivity is whatever the richest person earns — here ${money(maxIncome)} — and the noise (${money(nz)}) dwarfs the answer (${money(trueMean)}). This is the worksheet's point: income starts at 0 and is unbounded, so the Laplace mechanism has no sensitivity to calibrate to and cannot be applied as-is.`);
       } else if (Math.abs(Math.log(clip / best)) < 0.25) {
         setVerdict(verdict, 'ok',
-          `Near the sweet spot. Clip at ${money(clip)}, take the mean of the clipped values, and add Lap(C/(nε)). Total error ${money(tot)} against a true mean of ${money(trueMean)}. Crucially C is chosen in advance and published — it is a property of the mechanism, not of the data, so revealing it costs nothing.`);
+          `Near the sweet spot. Clip at ${money(clip)}, take the mean of the clipped values, and add ${inlineMath('\\operatorname{Lap}(C/(n\\varepsilon))')}. Total error ${money(tot)} against a true mean of ${money(trueMean)}. Crucially ${inlineMath('C')} is chosen in advance and published — it is a property of the mechanism, not of the data, so revealing it costs nothing.`);
       } else if (clip < best) {
         setVerdict(verdict, 'warn',
           `Clipping this hard is cheap in noise (${money(nz)}) but you have cut ${clipped} incomes down to ${money(clip)}, biasing the mean by ${money(b)}. Bias does not shrink with more respondents — noise does. Choosing C too low is the harder mistake to detect.`);
       } else {
         setVerdict(verdict, 'warn',
-          `Almost nothing is being clipped, so the estimate is nearly unbiased — but sensitivity is C/n, and the noise has grown to ${money(nz)}. The bound is doing no statistical work and all of the privacy damage.`);
+          `Almost nothing is being clipped, so the estimate is nearly unbiased — but sensitivity is ${inlineMath('C/n')}, and the noise has grown to ${money(nz)}. The bound is doing no statistical work and all of the privacy damage.`);
       }
     }
 
@@ -1111,9 +1179,9 @@
   D.budget = function (root) {
     let totalEps = 1, queries = 4, strategy = 'split';
 
-    const perMetric = metric('ε per query', '—', 'privacy-tone', 'total ÷ number of queries');
-    const spentMetric = metric('Total ε spent', '—', 'attack-tone', 'sequential composition');
-    const errMetric = metric('Error per answer', '—', 'model-tone', 'std dev, Δf = 1');
+    const perMetric = metric(`${inlineMath('\\varepsilon')} per query`, '—', 'privacy-tone', 'total ÷ number of queries');
+    const spentMetric = metric(`Total ${inlineMath('\\varepsilon')} spent`, '—', 'attack-tone', 'sequential composition');
+    const errMetric = metric('Error per answer', '—', 'model-tone', `std dev, ${inlineMath('\\Delta f=1')}`);
     const avgMetric = metric('Error after averaging', '—', '', 'if you repeat one query');
 
     const bar = h('div', { class: 'budget-bar' }, []);
@@ -1121,16 +1189,16 @@
     const verdict = verdictBox('');
 
     const epsSlider = slider({
-      label: 'total budget ε', min: 0.1, max: 5, step: 0.1, value: totalEps,
+      label: `total budget ${inlineMath('\\varepsilon')}`, min: 0.1, max: 5, step: 0.1, value: totalEps,
       format: v => v.toFixed(1), onInput: v => { totalEps = v; render(); }
     });
     const qSlider = slider({
-      label: 'queries k', min: 1, max: 40, step: 1, value: queries,
+      label: `queries ${inlineMath('k')}`, min: 1, max: 40, step: 1, value: queries,
       onInput: v => { queries = v; render(); }
     });
     const stratControl = segmented('you ask', [
-      { value: 'split', label: 'k different queries' },
-      { value: 'repeat', label: 'the same query k times' }
+      { value: 'split', label: `${inlineMath('k')} different queries` },
+      { value: 'repeat', label: `the same query ${inlineMath('k')} times` }
     ], strategy, v => { strategy = v; render(); });
 
     root.append(
@@ -1152,18 +1220,22 @@
     const avgError = k => perError(k) / Math.sqrt(k);
 
     function render() {
-      setMetric(perMetric, perEps(queries).toFixed(3), `${queries} × ${perEps(queries).toFixed(3)} = ${totalEps.toFixed(1)}`);
-      setMetric(spentMetric, totalEps.toFixed(2), 'ε₁ + ε₂ + … + ε_k');
-      setMetric(errMetric, `σ = ${perError(queries).toFixed(1)}`, `standard deviation; count Δf = 1`);
-      setMetric(avgMetric, strategy === 'repeat' ? `σ = ${avgError(queries).toFixed(1)}` : '—',
+      setMetric(perMetric, perEps(queries).toFixed(3),
+        inlineMath(`${queries}\\times${perEps(queries).toFixed(3)}=${totalEps.toFixed(1)}`));
+      setMetric(spentMetric, totalEps.toFixed(2), inlineMath('\\varepsilon_1+\\varepsilon_2+\\cdots+\\varepsilon_k'));
+      setMetric(errMetric, inlineMath(`\\sigma=${perError(queries).toFixed(1)}`),
+        `standard deviation; count ${inlineMath('\\Delta f=1')}`);
+      setMetric(avgMetric, strategy === 'repeat' ? inlineMath(`\\sigma=${avgError(queries).toFixed(1)}`) : '—',
         strategy === 'repeat' ? 'standard deviation of the average' : 'not applicable to different queries');
       avgMetric.classList.toggle('is-leak', strategy === 'repeat' && avgError(queries) > avgError(1));
 
       bar.replaceChildren(...[
         ...Array.from({ length: Math.min(queries, 20) }, () =>
-          h('div', { class: 'budget-slice spent', style: 'flex:1' }, [queries <= 12 ? `ε/${queries}` : ''])),
+          h('div', { class: 'budget-slice spent', style: 'flex:1',
+            html: queries <= 12 ? inlineMath(`\\varepsilon/${queries}`) : '' }, [])),
         queries > 20 ? h('div', { class: 'budget-slice left', style: 'flex:1' }, [`+${queries - 20} more`]) : null
       ].filter(Boolean));
+      queueTypeset(bar);
 
       const W = 900, H = 230, pad = 52;
       const kMax = 40;
@@ -1189,27 +1261,32 @@
           ? svgEl('line', { x1: pad, y1: sy(avgError(1)), x2: W - pad, y2: sy(avgError(1)), stroke: 'var(--ink-faint)', 'stroke-width': 1.2, 'stroke-dasharray': '3 4' })
           : null,
         strategy === 'repeat'
-          ? svgText({ class: 'axis-label', x: pad + 6, y: sy(avgError(1)) - 7 }, `asking once: σ=${avgError(1).toFixed(1)}`)
+          ? svgHtmlText({ x: pad + 6, y: sy(avgError(1)) - 7 },
+            `asking once: ${inlineMath(`\\sigma=${avgError(1).toFixed(1)}`)}`, 190)
           : null,
         svgEl('circle', { cx: sx(queries), cy: sy(strategy === 'repeat' ? avgError(queries) : perError(queries)), r: 5, fill: strategy === 'repeat' ? 'var(--accent-3)' : 'var(--accent-2)' }),
         strategy === 'split'
-          ? svgText({ class: 'axis-label', x: pad + 6, y: 18, fill: 'var(--accent-2)' }, 'one answer: σ ∝ k')
+          ? svgHtmlText({ x: pad + 6, y: 18, fill: 'var(--accent-2)' },
+            `one answer: ${inlineMath('\\sigma\\propto k')}`, 190)
           : null,
         strategy === 'repeat'
-          ? svgText({ class: 'axis-label', x: W - pad, y: 18, 'text-anchor': 'end', fill: 'var(--accent-3)' }, 'average: σ ∝ √k')
+          ? svgHtmlText({ x: W - pad, y: 18, 'text-anchor': 'end', fill: 'var(--accent-3)' },
+            `average: ${inlineMath('\\sigma\\propto\\sqrt{k}')}`, 190)
           : null,
         svgText({ class: 'axis-label', x: pad + 6, y: 37 }, 'noise std. dev. (count units)'),
-        svgText({ class: 'axis-label', x: W / 2, y: H - 8, 'text-anchor': 'middle' }, 'number of queries k, under one fixed budget'),
+        svgHtmlText({ x: W / 2, y: H - 8, 'text-anchor': 'middle' },
+          `number of queries ${inlineMath('k')}, under one fixed budget`, 320),
         svgText({ class: 'axis-label', x: pad, y: H - 8 }, '1'),
         svgText({ class: 'axis-label', x: W - pad, y: H - 8, 'text-anchor': 'end' }, String(kMax))
       ].filter(Boolean));
+      queueTypeset(chart);
 
       if (strategy === 'repeat') {
         setVerdict(verdict, 'bad',
-          `Under this fixed-budget split, asking the same query ${queries}× gives each answer ε/${queries}. Its noise scale grows like k, while averaging removes only √k, so the standard deviation rises from ${avgError(1).toFixed(1)} for one answer to ${avgError(queries).toFixed(1)} here. Repetition no longer buys accuracy under this allocation.`);
+          `Under this fixed-budget split, asking the same query ${inlineMath(`${queries}\\times`)} gives each answer ${inlineMath(`\\varepsilon/${queries}`)}. Its noise scale grows like ${inlineMath('k')}, while averaging removes only ${inlineMath('\\sqrt{k}')}, so the standard deviation rises from ${inlineMath(avgError(1).toFixed(1))} for one answer to ${inlineMath(avgError(queries).toFixed(1))} here. Repetition no longer buys accuracy under this allocation.`);
       } else {
         setVerdict(verdict, queries <= 5 ? 'ok' : 'warn',
-          `Sequential composition charges Σεᵢ = ${totalEps.toFixed(1)}. Spread equally over ${queries} count queries, each answer has noise standard deviation ${perError(queries).toFixed(1)}. Additional releases need additional budget or a redesigned allocation.`);
+          `Sequential composition charges ${inlineMath(`\\sum_i\\varepsilon_i=${totalEps.toFixed(1)}`)}. Spread equally over ${queries} count queries, each answer has noise standard deviation ${inlineMath(perError(queries).toFixed(1))}. Additional releases need additional budget or a redesigned allocation.`);
       }
     }
 
@@ -1230,19 +1307,21 @@
     const WEEK3_ACCURACY = 0.73;
     const UNDEFENDED = 2 * WEEK3_ACCURACY - 1;      // = 0.46
 
-    const boundMetric = metric('Advantage bound', '—', 'privacy-tone', 'Yeom et al., e^ε − 1');
+    const boundMetric = metric('Advantage bound', '—', 'privacy-tone', `Yeom et al., ${inlineMath('e^{\\varepsilon}-1')}`);
     const bitesMetric = metric('Does it bite?', '—', 'attack-tone', 'against the week 3 attack');
-    const thresholdMetric = metric('Beats week 3 below', '—', 'model-tone', 'ε where bound = 0.46');
+    const thresholdMetric = metric('Beats week 3 below', '—', 'model-tone',
+      `${inlineMath('\\varepsilon')} where bound ${inlineMath('=0.46')}`);
 
     const chart = svgEl('svg', { viewBox: '0 0 900 240', role: 'img', 'aria-label': 'Membership advantage upper bound from zero to one against epsilon on a logarithmic scale' });
     const verdict = verdictBox('');
 
     const epsSlider = slider({
-      label: 'ε', min: Math.log(0.01), max: Math.log(10), step: 0.01, value: Math.log(eps),
+      label: inlineMath('\\varepsilon'), min: Math.log(0.01), max: Math.log(10), step: 0.01, value: Math.log(eps),
       format: v => fmtEps(Math.exp(v)), onInput: v => { eps = Math.exp(v); render(); }
     });
     const presets = h('div', { class: 'btn-group' }, [
-      ['ln 2 ≈ 0.69', Math.log(2)], ['ε = 1', 1], ['halve week 3', Math.log(1 + UNDEFENDED / 2)]
+      [inlineMath('\\ln 2\\approx 0.69'), Math.log(2)], [inlineMath('\\varepsilon=1'), 1],
+      ['halve week 3', Math.log(1 + UNDEFENDED / 2)]
     ].map(([label, value]) => button(label, () => { eps = value; epsSlider.set(Math.log(value)); render(); })));
 
     root.append(
@@ -1256,12 +1335,12 @@
 
     function render() {
       const raw = bound(eps), capped = Math.min(1, raw);
-      setMetric(boundMetric, raw >= 1 ? `${raw.toFixed(2)} (≥ 1)` : raw.toFixed(3),
+      setMetric(boundMetric, raw >= 1 ? inlineMath(`${raw.toFixed(2)}\\;(\\ge 1)`) : raw.toFixed(3),
         raw >= 1 ? 'vacuous — advantage is at most 1 anyway' : 'a real restriction');
       setMetric(bitesMetric, raw < UNDEFENDED ? 'yes' : 'no',
         raw < UNDEFENDED ? `forces the attack below ${UNDEFENDED.toFixed(2)}` : `week 3 reached ${UNDEFENDED.toFixed(2)} unaided`);
       bitesMetric.classList.toggle('is-leak', raw >= UNDEFENDED);
-      setMetric(thresholdMetric, `ε = ${Math.log(1 + UNDEFENDED).toFixed(3)}`,
+      setMetric(thresholdMetric, inlineMath(`\\varepsilon=${Math.log(1 + UNDEFENDED).toFixed(3)}`),
         `below this the bound beats week 3's ${UNDEFENDED.toFixed(2)}`);
 
       const W = 900, H = 240, pad = 52;
@@ -1284,24 +1363,30 @@
         svgEl('line', { x1: pad, y1: sy(UNDEFENDED), x2: W - pad, y2: sy(UNDEFENDED), stroke: 'var(--accent-2)', 'stroke-width': 1.5, 'stroke-dasharray': '5 4' }),
         svgEl('line', { x1: sx(eps), y1: 20, x2: sx(eps), y2: H - 32, stroke: 'var(--ink)', 'stroke-width': 1.1, opacity: .5 }),
         svgEl('circle', { cx: sx(eps), cy: sy(Math.min(1.15, raw)), r: 5, fill: 'var(--accent-3)' }),
-        svgText({ class: 'axis-label', x: pad + 6, y: 28 }, 'membership advantage bound (0–1)'),
-        svgText({ class: 'axis-label', x: pad + 6, y: sy(UNDEFENDED) - 7, fill: 'var(--accent-2)' }, `week 3's undefended attack: advantage ${UNDEFENDED.toFixed(2)} (73% accuracy)`),
-        svgText({ class: 'axis-label', x: pad + 6, y: sy(1) - 7 }, 'bound = 1 — no restriction'),
-        svgText({ class: 'axis-label', x: W - pad - 6, y: H - 44, 'text-anchor': 'end', fill: 'var(--accent-2)' }, 'ε > ln 2: the bound is vacuous'),
-        svgText({ class: 'axis-label', x: W / 2, y: H - 8, 'text-anchor': 'middle' }, 'ε  (log scale)'),
+        svgHtmlText({ x: pad + 6, y: 28 },
+          `membership advantage bound ${inlineMath('(0\\text{–}1)')}`, 260),
+        svgHtmlText({ x: pad + 6, y: sy(UNDEFENDED) - 7, fill: 'var(--accent-2)' },
+          `week 3's undefended attack: advantage ${inlineMath(`${UNDEFENDED.toFixed(2)}\\;(73\\%\\text{ accuracy})`)}`, 460),
+        svgHtmlText({ x: pad + 6, y: sy(1) - 7 },
+          `bound ${inlineMath('=1')} — no restriction`, 230),
+        svgHtmlText({ x: W - pad - 6, y: H - 44, 'text-anchor': 'end', fill: 'var(--accent-2)' },
+          `${inlineMath('\\varepsilon>\\ln 2')}: the bound is vacuous`, 260),
+        svgHtmlText({ x: W / 2, y: H - 8, 'text-anchor': 'middle' },
+          `${inlineMath('\\varepsilon')} (log scale)`, 150),
         svgText({ class: 'axis-label', x: pad, y: H - 8 }, '0.01'),
         svgText({ class: 'axis-label', x: W - pad, y: H - 8, 'text-anchor': 'end' }, '10')
       );
+      queueTypeset(chart);
 
       if (raw < UNDEFENDED) {
         setVerdict(verdict, 'ok',
-          `Yes — and provably. At ε = ${fmtEps(eps)} the adversary's membership advantage cannot exceed ${raw.toFixed(3)}, whatever attack they run and whatever they already know. Week 3's threshold attack reached ${UNDEFENDED.toFixed(2)} on an undefended model; that is now impossible rather than merely unobserved.`);
+          `Yes — and provably. At ${inlineMath(`\\varepsilon=${fmtEps(eps)}`)} the adversary's membership advantage cannot exceed ${inlineMath(raw.toFixed(3))}, whatever attack they run and whatever they already know. Week 3's threshold attack reached ${inlineMath(UNDEFENDED.toFixed(2))} on an undefended model; that is now impossible rather than merely unobserved.`);
       } else if (raw < 1) {
         setVerdict(verdict, 'warn',
-          `The bound holds at ${raw.toFixed(3)}, but it is weaker than the attack week 3 actually achieved (${UNDEFENDED.toFixed(2)}). So DP is doing something, and the guarantee alone does not yet rule out the attack we already built.`);
+          `The bound holds at ${inlineMath(raw.toFixed(3))}, but it is weaker than the attack week 3 actually achieved (${inlineMath(UNDEFENDED.toFixed(2))}). So DP is doing something, and the guarantee alone does not yet rule out the attack we already built.`);
       } else {
         setVerdict(verdict, 'bad',
-          `The worksheet's form is correct: treat the model as the output of a DP mechanism, then apply post-processing. But at ε = ${fmtEps(eps)} this particular advantage bound is ${raw.toFixed(2)}, while advantage cannot exceed 1. The theorem is non-binding here; observed attack performance requires a separate empirical evaluation.`);
+          `The worksheet's form is correct: treat the model as the output of a DP mechanism, then apply post-processing. But at ${inlineMath(`\\varepsilon=${fmtEps(eps)}`)} this particular advantage bound is ${inlineMath(raw.toFixed(2))}, while advantage cannot exceed ${inlineMath('1')}. The theorem is non-binding here; observed attack performance requires a separate empirical evaluation.`);
       }
     }
 
@@ -1322,8 +1407,9 @@
       });
       event.currentTarget.classList.add(correct ? 'correct' : 'incorrect');
       event.currentTarget.setAttribute('aria-pressed', 'true');
-      feedback.textContent = explanation;
+      feedback.innerHTML = explanation;
       feedback.className = `quiz-feedback ${correct ? 'correct' : 'incorrect'}`;
+      queueTypeset(feedback);
     }));
     buttons.forEach(btn => btn.setAttribute('aria-pressed', 'false'));
     root.append(
@@ -1336,23 +1422,23 @@
 
   D.sensitivityCheck = function (root) {
     return quiz(root, 'One value in the sum may be twice as large as the rest. What happens to the noise?', [
-      ['Nothing — only one record in n changed, so the effect washes out.',
+      [`Nothing — only one record in ${inlineMath('n')} changed, so the effect washes out.`,
         'No. Sensitivity is a maximum over neighbouring pairs, not an average over records. One record is exactly what the definition ranges over.', false],
       ['The scale doubles, for every record in the dataset.',
-        'Correct. Δf = 2h, so b = 2h/ε and every answer carries twice the noise — the whole release pays for the single widest possible record, even though n−1 of them still lie in [l, h].', true],
-      ['The scale grows by a factor of 2/n, since only one value moved.',
-        'No. That would be an averaging argument, and sensitivity does not average. For the sum the worst neighbouring pair adds or removes v₁ itself, changing the answer by up to 2h.', false]
+        `Correct. ${inlineMath('\\Delta f=2h')}, so ${inlineMath('b=2h/\\varepsilon')} and every answer carries twice the noise — the whole release pays for the single widest possible record, even though ${inlineMath('n-1')} of them still lie in ${inlineMath('[l,h]')}.`, true],
+      [`The scale grows by a factor of ${inlineMath('2/n')}, since only one value moved.`,
+        `No. That would be an averaging argument, and sensitivity does not average. For the sum the worst neighbouring pair adds or removes ${inlineMath('v_1')} itself, changing the answer by up to ${inlineMath('2h')}.`, false]
     ]);
   };
 
   D.dpScopeCheck = function (root) {
-    return quiz(root, 'A study using an ε-DP mechanism concludes that smoking causes cancer. X is a smoker who did not participate. Which statement is right?', [
+    return quiz(root, `A study using an ${inlineMath('\\varepsilon')}-DP mechanism concludes that smoking causes cancer. X is a smoker who did not participate. Which statement is right?`, [
       ['X\'s privacy was breached: the world now infers something about X\'s health.',
         'No — and this is lecture 5\'s point. The conclusion holds whether or not X was in the study, so it is not a harm of participation. DP bounds the harm of taking part, not the harm of true facts becoming known.', false],
       ['No DP guarantee was needed, since X was not in the dataset.',
         'The guarantee is still what makes the release safe for the people who were in it — and DP is defined over neighbouring datasets precisely so that it covers X had X joined.', false],
       ['DP was not violated: the inference does not depend on X\'s participation.',
-        'Correct. ε-DP promises that the output distribution is nearly the same whether or not any one person contributes. Population-level findings are unaffected by that promise — DP limits what your presence reveals, not what the world can learn.', true]
+        `Correct. ${inlineMath('\\varepsilon')}-DP promises that the output distribution is nearly the same whether or not any one person contributes. Population-level findings are unaffected by that promise — DP limits what your presence reveals, not what the world can learn.`, true]
     ]);
   };
 
